@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>너른고을 스팟 지도</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+:root {
+  --bg: #eef1f0; --panel: #ffffff; --ink: #1d2523; --muted: #5d6965; --line: #d6dcda;
+  --flower: #e2571e; --cafe: #1f6f66; --event: #4a4fb0; --now: #c98a00; --now-bg: #fff3d1;
+  --font-display: "Do Hyeon", "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #121716; --panel: #1a201f; --ink: #e6ebe9; --muted: #9aa7a3; --line: #2c3533;
+    --flower: #ff7a45; --cafe: #4cc1b2; --event: #8f94ff; --now: #f2b62e; --now-bg: #3a2f12; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.5 var(--font-body); display: flex; flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px); }
+header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; background: var(--panel);
+  border-bottom: 1px solid var(--line); padding-block: 10px;
+  padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px)); }
+.brand { margin-right: auto; min-width: 0; }
+.brand h1 { font: 400 24px/1.1 var(--font-display); margin: 0; }
+.brand p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip { font: inherit; font-size: 13px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.chip .dot { width: 9px; height: 9px; border-radius: 50%; }
+.chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--panel); }
+.chip.now[aria-pressed="true"] { background: var(--now); border-color: var(--now); color: #1d1400; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { font: inherit; font-size: 13px; padding: 5px 12px; border: 0; background: var(--panel); color: var(--muted); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+button:focus-visible { outline: 2px solid var(--now); outline-offset: 2px; }
+
+.layout { flex: 1; min-height: 0; display: grid; grid-template-columns: 340px 1fr; }
+aside { overflow-y: auto; background: var(--panel); border-right: 1px solid var(--line);
+  padding: 12px 14px 24px max(14px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 10px; }
+.list-head { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
+.card { text-align: left; font: inherit; color: inherit; cursor: pointer; background: transparent;
+  border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 10px; padding: 11px 12px;
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; }
+.card.active, .card:hover { background: var(--bg); }
+.card .name { font: 400 18px/1.25 var(--font-display); min-width: 0; }
+.card .meta, .card .season { grid-column: 1 / -1; font-size: 12.5px; }
+.card .meta { color: var(--muted); }
+.badge { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 999px; align-self: start; white-space: nowrap; }
+.badge.now { background: var(--now-bg); color: var(--now); }
+.badge.over { background: var(--bg); color: var(--muted); }
+.empty { color: var(--muted); font-size: 13px; }
+
+.mapwrap { position: relative; min-height: 0; }
+#map { position: absolute; inset: 0; background: var(--bg); }
+.maperr { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
+
+.pin { width: 30px; height: 30px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: var(--c);
+  border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.3); display: grid; place-items: center; position: relative; cursor: pointer; }
+.pin span { transform: rotate(45deg); color: #fff; font: 400 15px/1 var(--font-display); }
+.pin.now::after { content: ""; position: absolute; inset: -7px; border-radius: 50%; border: 2px solid var(--now); animation: ring 2s ease-out infinite; }
+.pin.dim { opacity: .4; }
+.pin.sel { outline: 3px solid var(--ink); outline-offset: 2px; }
+@keyframes ring { from { transform: scale(.7); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pin.now::after { animation: none; } }
+
+.detail { position: absolute; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); max-width: 420px;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 14px 16px; z-index: 5; max-height: 60%; overflow-y: auto; }
+.detail h3 { font: 400 22px/1.2 var(--font-display); margin: 0 28px 0 0; }
+.detail .sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.detail .season { margin-top: 8px; font-size: 13px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.detail ul { margin: 8px 0 0; padding-left: 18px; font-size: 13.5px; }
+.detail li + li { margin-top: 3px; }
+.detail .src { margin-top: 10px; font-size: 12px; color: var(--muted); }
+.detail .links { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+.detail .links a { font-size: 13px; text-decoration: none; color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px; }
+.detail .close { position: absolute; top: 8px; right: 8px; width: 32px; height: 32px; border: 0; background: transparent;
+  color: var(--muted); font-size: 20px; cursor: pointer; border-radius: 6px; }
+
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; grid-template-rows: 60vh auto; overflow-y: auto; }
+  .mapwrap { order: 1; }
+  aside { order: 2; border-right: 0; border-top: 1px solid var(--line); overflow: visible;
+    padding-right: max(14px, env(safe-area-inset-right, 0px)); }
+  .brand h1 { font-size: 21px; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>너른고을 스팟 지도</h1>
+    <p id="today"></p>
+  </div>
+  <div class="row">
+    <div class="seg" role="group" aria-label="지도 선택">
+      <button type="button" id="m-kakao" aria-pressed="false">카카오맵</button>
+      <button type="button" id="m-naver" aria-pressed="false">네이버 지도</button>
+    </div>
+  </div>
+  <div class="row" role="group" aria-label="필터">
+    <button class="chip now" type="button" id="f-now" aria-pressed="false">지금 시즌만</button>
+    <button class="chip" type="button" data-type="all" aria-pressed="true">전체</button>
+    <button class="chip" type="button" data-type="flower" aria-pressed="false"><i class="dot" style="background:var(--flower)"></i>꽃 명소</button>
+    <button class="chip" type="button" data-type="cafe" aria-pressed="false"><i class="dot" style="background:var(--cafe)"></i>카페</button>
+    <button class="chip" type="button" data-type="event" aria-pressed="false"><i class="dot" style="background:var(--event)"></i>공연·행사</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside aria-label="스팟 목록">
+    <div class="list-head"><span>스팟</span><span id="count"></span></div>
+    <div id="cards" style="display:flex;flex-direction:column;gap:10px"></div>
+  </aside>
+  <div class="mapwrap">
+    <div id="map"></div>
+    <div class="detail" id="detail" hidden></div>
+  </div>
+</div>
+
+<script>
+const KEYS = { kakao: "f800c144d4b8b3d8bb8c36018053cbae", naver: "qgbukcwxe8" };
+
+const TYPES = {
+  flower: { label: "꽃 명소", color: "--flower" },
+  cafe: { label: "카페", color: "--cafe" },
+  event: { label: "공연·행사", color: "--event" },
+};
+
+const SPOTS = [
+  { id: "guri", name: "구리 한강시민공원", type: "flower", area: "구리", sub: "코스모스 들판",
+    lat: 37.5756256, lng: 127.1425825, months: [10], seasonLabel: "10월 · 핑크 코스모스",
+    tips: ["10월에 피는 핑크 코스모스가 9월 황화 코스모스보다 훨씬 예쁨", "삼패지구보다는 붐비는 편"],
+    src: { kind: "작성자 답글", srl: "10264870625", title: "남양주 한강공원 코스모스 꽃밭", date: "2026.08.28" }, q: "구리한강시민공원" },
+  { id: "sampae", name: "남양주 한강공원 삼패지구", type: "flower", area: "남양주", sub: "황화 코스모스 꽃밭",
+    lat: 37.5923053, lng: 127.1951209, months: [8, 9], seasonLabel: "8월 말 ~ 9월 중순 · 황화 코스모스",
+    tips: ["한강공원 중 가장 한적함, 사람이 정말 적음", "공원 바로 앞 주차장, 자리 여유 있음", "빛까지 담으려면 오후 5시 반 전에 도착", "근처 팔당과 묶어서 가기 추천"],
+    src: { kind: "본문 + 작성자 답글", srl: "10264870625", title: "남양주 한강공원 코스모스 꽃밭", date: "2026.08.27" }, q: "한강공원삼패지구" },
+  { id: "sejong", name: "세종문화회관 예술의 정원", type: "event", area: "광화문", sub: "무료 재즈공연 ‘커튼 콜 가든’",
+    lat: 37.5725945, lng: 126.9757787, months: [10, 11], until: "2026-11-08", seasonLabel: "11월 8일까지 · 월요일 휴무",
+    tips: ["재즈 공연: 수~금 오후 6시 30분, 토 오후 5시", "정원은 오후 5시~11시 운영", "종로 데이트 코스에 끼워 넣기 좋음"],
+    src: { kind: "본문", srl: "10470205637", title: "~11.8) 광화문 세종문화회관 앞 무료 재즈공연", date: "2026.10.21" }, q: "세종문화회관" },
+  { id: "gongwon", name: "공원스크립트", type: "cafe", area: "용인 고기리", sub: "통창 숲뷰 청음실 카페",
+    lat: 37.3593762, lng: 127.0487408, months: [], seasonLabel: "사계절",
+    tips: ["1층은 푹신한 소파, 2층이 청음실", "작성자 기준 청음 카페 수십 곳 중 다섯 손가락 안", "고기리 막국수에서 걸어서 10분"],
+    src: { kind: "본문 + 작성자 답글", srl: "10466733765", title: "용인 고기리 통창 숲뷰 힐링되는 청음실 카페", date: "2026.10.20" }, q: "공원스크립트" },
+  { id: "noto", name: "노토", type: "cafe", area: "양재천", sub: "챗GPT 블렌딩 핸드드립 카페",
+    lat: 37.4821686, lng: 127.0392893, months: [], seasonLabel: "사계절",
+    tips: ["챗GPT가 추천한 원두 조합을 사장님이 핸드드립으로", "필터커피 5천 원, 양이 꽤 많음", "매장이 작아 오래 머물기는 불편"],
+    src: { kind: "본문", srl: "10450002478", title: "양재천 챗지피티가 골라주는 핸드드립 카페", date: "2026.10.15" }, q: "Noto" },
+];
+
+const today = new Date();
+const month = today.getMonth() + 1;
+const ymd = `${today.getFullYear()}-${String(month).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+document.getElementById("today").textContent = `${month}월 ${today.getDate()}일 기준 · 스팟 ${SPOTS.length}곳 (시범)`;
+
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const status = (s) => (s.until && ymd > s.until) ? "over" : (s.months.includes(month) ? "now" : "");
+const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+                set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+
+let typeFilter = "all", nowOnly = false, selId = null;
+const visible = () => SPOTS.filter((s) => (typeFilter === "all" || s.type === typeFilter) && (!nowOnly || status(s) === "now"));
+
+function pinHtml(s, idx) {
+  const st = status(s);
+  return `<div class="pin ${st === "now" ? "now" : ""} ${st === "over" ? "dim" : ""} ${s.id === selId ? "sel" : ""}"
+    data-id="${s.id}" style="--c:var(${TYPES[s.type].color})"><span>${idx}</span></div>`;
+}
+
+/* ---------------- 지도 어댑터 ---------------- */
+function loadScript(src) {
+  return new Promise((ok, fail) => {
+    const el = document.createElement("script");
+    el.src = src; el.onload = ok; el.onerror = () => fail(new Error("load"));
+    document.head.appendChild(el);
+  });
+}
+
+const Kakao = {
+  async init(el) {
+    if (!window.kakao || !kakao.maps || !kakao.maps.Map) {
+      await loadScript(`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KEYS.kakao}&autoload=false`);
+      await new Promise((ok) => kakao.maps.load(ok));
+    }
+    this.map = new kakao.maps.Map(el, { center: new kakao.maps.LatLng(37.5, 127.05), level: 9 });
+    this.map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
+    this.items = [];
+  },
+  clear() { this.items.forEach((o) => o.setMap(null)); this.items = []; },
+  add(s, idx) {
+    const node = document.createElement("div");
+    node.innerHTML = pinHtml(s, idx);
+    node.firstElementChild.addEventListener("click", () => select(s.id, false));
+    const o = new kakao.maps.CustomOverlay({ position: new kakao.maps.LatLng(s.lat, s.lng), content: node.firstElementChild,
+      xAnchor: 0.5, yAnchor: 1.15, zIndex: s.id === selId ? 3 : 1 });
+    o.setMap(this.map); this.items.push(o);
+  },
+  fit(list) {
+    if (!list.length) return;
+    if (list.length === 1) { this.map.setCenter(new kakao.maps.LatLng(list[0].lat, list[0].lng)); this.map.setLevel(5); return; }
+    const b = new kakao.maps.LatLngBounds();
+    list.forEach((s) => b.extend(new kakao.maps.LatLng(s.lat, s.lng)));
+    this.map.setBounds(b, 60, 40, 60, 40);
+  },
+  focus(s) { this.map.setLevel(Math.min(this.map.getLevel(), 6)); this.map.panTo(new kakao.maps.LatLng(s.lat, s.lng)); },
+  relayout() { this.map && this.map.relayout(); },
+};
+
+const Naver = {
+  async init(el) {
+    if (!window.naver || !naver.maps || !naver.maps.Map) {
+      await loadScript(`https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${KEYS.naver}`);
+    }
+    this.map = new naver.maps.Map(el, { center: new naver.maps.LatLng(37.5, 127.05), zoom: 10,
+      zoomControl: true, zoomControlOptions: { position: naver.maps.Position.RIGHT_CENTER } });
+    this.items = [];
+  },
+  clear() { this.items.forEach((o) => o.setMap(null)); this.items = []; },
+  add(s, idx) {
+    const m = new naver.maps.Marker({ map: this.map, position: new naver.maps.LatLng(s.lat, s.lng),
+      icon: { content: pinHtml(s, idx), anchor: new naver.maps.Point(15, 34) }, zIndex: s.id === selId ? 3 : 1 });
+    naver.maps.Event.addListener(m, "click", () => select(s.id, false));
+    this.items.push(m);
+  },
+  fit(list) {
+    if (!list.length) return;
+    if (list.length === 1) { this.map.setCenter(new naver.maps.LatLng(list[0].lat, list[0].lng)); this.map.setZoom(15); return; }
+    const b = new naver.maps.LatLngBounds();
+    list.forEach((s) => b.extend(new naver.maps.LatLng(s.lat, s.lng)));
+    this.map.fitBounds(b, { top: 60, right: 40, bottom: 60, left: 40 });
+  },
+  focus(s) { if (this.map.getZoom() < 13) this.map.setZoom(13); this.map.panTo(new naver.maps.LatLng(s.lat, s.lng)); },
+  relayout() { this.map && naver.maps.Event.trigger(this.map, "resize"); },
+};
+
+let engine = null;
+window.navermap_authFailure = () => showMapError("네이버 지도 인증에 실패했습니다. 네이버 클라우드의 Web 서비스 URL에 이 주소가 등록되어 있는지 확인해 주세요.");
+
+function showMapError(msg) {
+  const el = document.getElementById("map");
+  el.innerHTML = `<div class="maperr">${esc(msg)}</div>`;
+}
+
+async function useMap(kind) {
+  store.set("spotmap.engine", kind);
+  document.getElementById("m-kakao").setAttribute("aria-pressed", String(kind === "kakao"));
+  document.getElementById("m-naver").setAttribute("aria-pressed", String(kind === "naver"));
+  const old = document.getElementById("map");
+  const el = document.createElement("div");
+  el.id = "map";
+  old.replaceWith(el);
+  engine = kind === "kakao" ? Kakao : Naver;
+  try {
+    await engine.init(el);
+  } catch (e) {
+    engine = null;
+    showMapError(kind === "kakao"
+      ? "카카오맵을 불러오지 못했습니다. 카카오 개발자 콘솔의 JavaScript SDK 도메인에 이 주소가 등록되어 있는지 확인해 주세요."
+      : "네이버 지도를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    return;
+  }
+  drawPins(true);
+}
+
+/* ---------------- 목록과 상세 ---------------- */
+function drawPins(refit) {
+  const list = visible();
+  if (engine) {
+    engine.clear();
+    list.forEach((s, i) => engine.add(s, i + 1));
+    if (refit) engine.fit(list);
+  }
+  return list;
+}
+
+function render(refit) {
+  const list = drawPins(refit);
+  const cards = document.getElementById("cards");
+  cards.innerHTML = "";
+  list.forEach((s, i) => {
+    const st = status(s);
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "card" + (s.id === selId ? " active" : "");
+    b.style.setProperty("--c", `var(${TYPES[s.type].color})`);
+    const badge = st === "now" ? `<span class="badge now">지금 시즌</span>` : st === "over" ? `<span class="badge over">기간 종료</span>` : `<span></span>`;
+    b.innerHTML = `<span class="name">${i + 1}. ${esc(s.name)}</span>${badge}
+      <span class="meta">${esc(s.area)} · ${esc(TYPES[s.type].label)} · ${esc(s.sub)}</span>
+      <span class="season">${esc(s.seasonLabel)}</span>`;
+    b.addEventListener("click", () => select(s.id, true));
+    cards.appendChild(b);
+  });
+  document.getElementById("count").textContent = `${list.length}곳`;
+  if (!list.length) cards.innerHTML = `<p class="empty">조건에 맞는 스팟이 없습니다. 필터를 바꿔 보세요.</p>`;
+}
+
+function select(id, move) {
+  selId = id;
+  const s = SPOTS.find((x) => x.id === id);
+  render(false);
+  if (engine && move) engine.focus(s);
+  const st = status(s);
+  const badge = st === "now" ? `<span class="badge now">지금 시즌</span>` : st === "over" ? `<span class="badge over">기간 종료</span>` : "";
+  const d = document.getElementById("detail");
+  d.innerHTML = `<button class="close" type="button" aria-label="닫기">×</button>
+    <h3>${esc(s.name)}</h3>
+    <div class="sub">${esc(s.area)} · ${esc(s.sub)}</div>
+    <div class="season">${badge}<span>${esc(s.seasonLabel)}</span></div>
+    <ul>${s.tips.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
+    <div class="src">출처: ${esc(s.src.kind)} · ${esc(s.src.title)} (${esc(s.src.date)})</div>
+    <div class="links">
+      <a href="https://www.fmkorea.com/${s.src.srl}" target="_blank" rel="noopener">원글 보기</a>
+      <a href="https://map.naver.com/p/search/${encodeURIComponent(s.q)}" target="_blank" rel="noopener">네이버 지도</a>
+      <a href="https://map.kakao.com/link/map/${encodeURIComponent(s.name)},${s.lat},${s.lng}" target="_blank" rel="noopener">카카오맵</a>
+      <a href="https://map.kakao.com/link/to/${encodeURIComponent(s.name)},${s.lat},${s.lng}" target="_blank" rel="noopener">길찾기</a>
+    </div>`;
+  d.hidden = false;
+  d.querySelector(".close").addEventListener("click", () => { d.hidden = true; selId = null; render(false); });
+  if (move && window.matchMedia("(max-width: 760px)").matches) document.querySelector(".mapwrap").scrollIntoView({ behavior: "smooth" });
+}
+
+document.querySelectorAll(".chip[data-type]").forEach((c) => c.addEventListener("click", () => {
+  typeFilter = c.dataset.type;
+  document.querySelectorAll(".chip[data-type]").forEach((x) => x.setAttribute("aria-pressed", String(x === c)));
+  render(true);
+}));
+document.getElementById("f-now").addEventListener("click", (e) => {
+  nowOnly = !nowOnly;
+  e.currentTarget.setAttribute("aria-pressed", String(nowOnly));
+  render(true);
+});
+document.getElementById("m-kakao").addEventListener("click", () => useMap("kakao"));
+document.getElementById("m-naver").addEventListener("click", () => useMap("naver"));
+window.addEventListener("resize", () => engine && engine.relayout());
+
+render(false);
+useMap(store.get("spotmap.engine") === "naver" ? "naver" : "kakao");
+</script>
+</body>
+</html>
