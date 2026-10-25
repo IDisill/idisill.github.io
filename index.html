@@ -11,22 +11,27 @@
 <style>
 :root {
   --bg: #eef1f0; --panel: #ffffff; --ink: #1d2523; --muted: #5d6965; --line: #d6dcda;
-  --flower: #e2571e; --cafe: #1f6f66; --event: #4a4fb0; --now: #c98a00; --now-bg: #fff3d1;
+  --flower: #e2571e; --cafe: #1f6f66; --music: #7a3fa0; --food: #c2410c; --culture: #2f6db5;
+  --view: #0f8a8a; --event: #4a4fb0;
+  --now: #c98a00; --now-bg: #fff3d1;
+  --best-bg: #3a2414; --best-ink: #f0c75e; --verified: #1d9bf0; --rain: #2f6db5; --rain-bg: #e3edf9;
   --font-display: "Do Hyeon", "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root { --bg: #121716; --panel: #1a201f; --ink: #e6ebe9; --muted: #9aa7a3; --line: #2c3533;
-    --flower: #ff7a45; --cafe: #4cc1b2; --event: #8f94ff; --now: #f2b62e; --now-bg: #3a2f12; color-scheme: dark; }
+    --flower: #ff7a45; --cafe: #4cc1b2; --music: #c08ae6; --food: #ff9a5c; --culture: #7fb2f0;
+    --view: #4fd1d1; --event: #8f94ff; --now: #f2b62e; --now-bg: #3a2f12; --rain: #8fbaf0; --rain-bg: #1c2a3b;
+    color-scheme: dark; }
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 body { background: var(--bg); color: var(--ink); font: 14px/1.5 var(--font-body); display: flex; flex-direction: column;
   padding-top: env(safe-area-inset-top, 0px); }
-header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; background: var(--panel);
-  border-bottom: 1px solid var(--line); padding-block: 10px;
-  padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px)); }
+header.top { display: flex; flex-direction: column; gap: 8px; background: var(--panel); border-bottom: 1px solid var(--line);
+  padding-block: 10px; padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px)); }
+.toprow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
 .brand { margin-right: auto; min-width: 0; }
 .brand h1 { font: 400 24px/1.1 var(--font-display); margin: 0; }
 .brand p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
@@ -36,147 +41,263 @@ header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
 .chip .dot { width: 9px; height: 9px; border-radius: 50%; }
 .chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--panel); }
 .chip.now[aria-pressed="true"] { background: var(--now); border-color: var(--now); color: #1d1400; }
+.chip.best[aria-pressed="true"] { background: var(--best-bg); border-color: var(--best-bg); color: var(--best-ink); }
+.chip.ver[aria-pressed="true"] { background: var(--verified); border-color: var(--verified); color: #fff; }
+.chip.rain[aria-pressed="true"] { background: var(--rain); border-color: var(--rain); color: #fff; }
+.chip svg { width: 14px; height: 14px; flex: none; }
+.sep { width: 1px; height: 20px; background: var(--line); margin: 0 4px; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .seg button { font: inherit; font-size: 13px; padding: 5px 12px; border: 0; background: var(--panel); color: var(--muted); cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
-button:focus-visible { outline: 2px solid var(--now); outline-offset: 2px; }
+.search { font: inherit; font-size: 13px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--bg); color: var(--ink); width: 180px; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--now); outline-offset: 2px; }
 
-.layout { flex: 1; min-height: 0; display: grid; grid-template-columns: 340px 1fr; }
+.rainbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--rain-bg); color: var(--ink);
+  border-bottom: 1px solid var(--line); padding: 8px max(14px, env(safe-area-inset-right, 0px)) 8px max(14px, env(safe-area-inset-left, 0px)); font-size: 13.5px; }
+.rainbar[hidden] { display: none; }
+.rainbar b { color: var(--rain); }
+.rainbar button { font: inherit; font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 8px; border: 0; background: var(--rain); color: #fff; cursor: pointer; }
+.rainbar .x { background: transparent; color: var(--muted); font-weight: 400; padding: 5px 8px; }
+
+.layout { flex: 1; min-height: 0; display: grid; grid-template-columns: 360px 1fr; }
 aside { overflow-y: auto; background: var(--panel); border-right: 1px solid var(--line);
-  padding: 12px 14px 24px max(14px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 10px; }
+  padding: 12px 14px 24px max(14px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 8px; }
 .list-head { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
 .card { text-align: left; font: inherit; color: inherit; cursor: pointer; background: transparent;
-  border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 10px; padding: 11px 12px;
-  display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; }
+  border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 10px; padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 3px; }
 .card.active, .card:hover { background: var(--bg); }
-.card .name { font: 400 18px/1.25 var(--font-display); min-width: 0; }
-.card .meta, .card .season { grid-column: 1 / -1; font-size: 12.5px; }
-.card .meta { color: var(--muted); }
-.badge { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 999px; align-self: start; white-space: nowrap; }
+.card.dim { opacity: .55; }
+.card .top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.card .name { font: 400 17px/1.25 var(--font-display); }
+.card .meta { color: var(--muted); font-size: 12.5px; }
+.card .tip { font-size: 12.5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.badge { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; }
 .badge.now { background: var(--now-bg); color: var(--now); }
-.badge.over { background: var(--bg); color: var(--muted); }
+.badge.over { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+.badge.best { background: var(--best-bg); color: var(--best-ink); letter-spacing: .02em; }
+.badge.ver { background: transparent; color: var(--verified); padding: 0 2px; }
+.badge.ver svg { width: 14px; height: 14px; }
+.badge.rain { background: var(--rain-bg); color: var(--rain); }
+.badge.warn { background: #fdecea; color: #b42318; }
+.more { font: inherit; font-size: 13px; padding: 8px; border: 1px dashed var(--line); border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; }
 .empty { color: var(--muted); font-size: 13px; }
 
 .mapwrap { position: relative; min-height: 0; }
 #map { position: absolute !important; inset: 0; width: 100%; height: 100%; background: var(--bg); }
 .maperr { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
 
+/* 핀 */
+.pw { position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer; }
 .pin { width: 30px; height: 30px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: var(--c);
-  border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.3); display: grid; place-items: center; position: relative; cursor: pointer; }
-.pin span { transform: rotate(45deg); color: #fff; font: 400 15px/1 var(--font-display); }
-.pin.now::after { content: ""; position: absolute; inset: -7px; border-radius: 50%; border: 2px solid var(--now); animation: ring 2s ease-out infinite; }
-.pin.dim { opacity: .4; }
-.pin.sel { outline: 3px solid var(--ink); outline-offset: 2px; }
+  border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.3); display: grid; place-items: center; position: relative; }
+.pin span { transform: rotate(45deg); color: #fff; font: 400 13px/1 var(--font-display); }
+.pw.now .pin::after { content: ""; position: absolute; inset: -7px; border-radius: 50%; border: 2px solid var(--now); animation: ring 2s ease-out infinite; }
+.pw.dim { opacity: .38; }
+.pw.sel .pin { outline: 3px solid var(--ink); outline-offset: 2px; }
+.pw .bp { font: 600 10px/1 var(--font-body); background: var(--best-bg); color: var(--best-ink); padding: 3px 6px; border-radius: 999px;
+  margin-bottom: 3px; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,.35); letter-spacing: .02em; }
+.pw .vb { position: absolute; right: -9px; bottom: 18px; width: 17px; height: 17px; filter: drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
+.pw .rb { position: absolute; left: -9px; bottom: 18px; width: 17px; height: 17px; border-radius: 50%; background: var(--rain);
+  color: #fff; font-size: 10px; display: grid; place-items: center; border: 1.5px solid #fff; }
+.dotpin { width: 12px; height: 12px; border-radius: 50%; background: var(--c); border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35); cursor: pointer; }
+.dotpin.best { width: 14px; height: 14px; border-color: var(--best-ink); }
+.dotpin.dim { opacity: .35; }
+.dotpin.sel { outline: 2px solid var(--ink); outline-offset: 2px; }
 @keyframes ring { from { transform: scale(.7); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .pin.now::after { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .pw.now .pin::after { animation: none; } }
 
-.detail { position: absolute; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); max-width: 420px;
+/* 상세 */
+.detail { position: absolute; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); max-width: 440px;
   background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 14px 16px; z-index: 5; max-height: 60%; overflow-y: auto; }
+  box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 14px 16px; z-index: 5; max-height: 62%; overflow-y: auto; }
 .detail h3 { font: 400 22px/1.2 var(--font-display); margin: 0 28px 0 0; }
 .detail .sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
-.detail .season { margin-top: 8px; font-size: 13px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.detail ul { margin: 8px 0 0; padding-left: 18px; font-size: 13.5px; }
-.detail li + li { margin-top: 3px; }
-.detail .src { margin-top: 10px; font-size: 12px; color: var(--muted); }
-.detail .links { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+.detail .tags { margin-top: 8px; display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+.detail h4 { margin: 12px 0 4px; font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.detail ul { margin: 0; padding-left: 18px; font-size: 13.5px; }
+.detail li + li { margin-top: 5px; }
+.detail .from { display: block; font-size: 12px; color: var(--muted); }
+.detail .from a { color: inherit; }
+.detail .note { margin-top: 8px; font-size: 13px; padding: 6px 9px; border-radius: 8px; background: var(--bg); }
+.detail .links { margin-top: 12px; display: flex; gap: 6px; flex-wrap: wrap; }
 .detail .links a { font-size: 13px; text-decoration: none; color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px; }
 .detail .close { position: absolute; top: 8px; right: 8px; width: 32px; height: 32px; border: 0; background: transparent;
   color: var(--muted); font-size: 20px; cursor: pointer; border-radius: 6px; }
 
+/* 사진 (비공개 사이트에서만) */
+.gal { display: flex; gap: 6px; overflow-x: auto; margin: 6px 0 2px; padding-bottom: 4px; scroll-snap-type: x mandatory; }
+.gal img { height: 120px; width: auto; border-radius: 8px; cursor: zoom-in; scroll-snap-align: start; background: var(--bg); flex: none; }
+.galbtn { font: inherit; font-size: 12.5px; margin-top: 4px; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+.lb { position: fixed; inset: 0; background: rgba(0,0,0,.88); z-index: 50; display: grid; place-items: center; }
+.lb[hidden] { display: none; }
+.lb img { max-width: 94vw; max-height: 86vh; border-radius: 6px; }
+.lb .lbbar { position: absolute; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); left: 0; right: 0; display: flex; justify-content: center; gap: 10px; }
+.lb button { font: inherit; font-size: 15px; padding: 8px 16px; border-radius: 8px; border: 0; background: rgba(255,255,255,.15); color: #fff; cursor: pointer; }
+.lb .cnt { color: #ddd; align-self: center; font-size: 13px; }
+
 @media (max-width: 760px) {
-  .layout { grid-template-columns: 1fr; grid-template-rows: 60vh auto; overflow-y: auto; }
+  .layout { grid-template-columns: 1fr; grid-template-rows: 58vh auto; overflow-y: auto; }
   .mapwrap { order: 1; }
   aside { order: 2; border-right: 0; border-top: 1px solid var(--line); overflow: visible;
     padding-right: max(14px, env(safe-area-inset-right, 0px)); }
   .brand h1 { font-size: 21px; }
+  .search { width: 100%; }
+  .sep { display: none; }
 }
 </style>
 </head>
 <body>
 <header class="top">
-  <div class="brand">
-    <h1>너른고을 스팟 지도</h1>
-    <p id="today"></p>
-  </div>
-  <div class="row">
+  <div class="toprow">
+    <div class="brand">
+      <h1>너른고을 스팟 지도</h1>
+      <p id="today"></p>
+    </div>
+    <input class="search" id="q" type="search" placeholder="장소·동네 검색" aria-label="장소 검색">
     <div class="seg" role="group" aria-label="지도 선택">
       <button type="button" id="m-kakao" aria-pressed="false">카카오맵</button>
       <button type="button" id="m-naver" aria-pressed="false">네이버 지도</button>
     </div>
   </div>
-  <div class="row" role="group" aria-label="필터">
-    <button class="chip now" type="button" id="f-now" aria-pressed="false">지금 시즌만</button>
-    <button class="chip" type="button" data-type="all" aria-pressed="true">전체</button>
-    <button class="chip" type="button" data-type="flower" aria-pressed="false"><i class="dot" style="background:var(--flower)"></i>꽃 명소</button>
-    <button class="chip" type="button" data-type="cafe" aria-pressed="false"><i class="dot" style="background:var(--cafe)"></i>카페</button>
-    <button class="chip" type="button" data-type="event" aria-pressed="false"><i class="dot" style="background:var(--event)"></i>공연·행사</button>
+  <div class="row" role="group" aria-label="종류" id="kinds"></div>
+  <div class="row" role="group" aria-label="골라 보기">
+    <button class="chip now" type="button" id="f-now" aria-pressed="false">지금 시즌</button>
+    <button class="chip best" type="button" id="f-best" aria-pressed="false">BEST ★만</button>
+    <button class="chip ver" type="button" id="f-ver" aria-pressed="false"><span class="vsvg"></span>작성자 인증만</button>
+    <button class="chip rain" type="button" id="f-rain" aria-pressed="false">☂ 비 오는 날</button>
   </div>
 </header>
+<div class="rainbar" id="rainbar" hidden></div>
 
 <div class="layout">
   <aside aria-label="스팟 목록">
-    <div class="list-head"><span>스팟</span><span id="count"></span></div>
-    <div id="cards" style="display:flex;flex-direction:column;gap:10px"></div>
+    <div class="list-head"><span id="listtitle">스팟</span><span id="count"></span></div>
+    <div id="cards" style="display:flex;flex-direction:column;gap:8px"></div>
   </aside>
   <div class="mapwrap">
     <div id="map"></div>
     <div class="detail" id="detail" hidden></div>
   </div>
 </div>
+<div class="lb" id="lb" hidden><img id="lbimg" alt=""><div class="lbbar"><button type="button" id="lbprev">◀</button><span class="cnt" id="lbcnt"></span><button type="button" id="lbnext">▶</button><button type="button" id="lbclose">닫기</button></div></div>
 
 <script>
 const KEYS = { kakao: "f800c144d4b8b3d8bb8c36018053cbae", naver: "qgbukcwxe8" };
-
-const TYPES = {
-  flower: { label: "꽃 명소", color: "--flower" },
-  cafe: { label: "카페", color: "--cafe" },
-  event: { label: "공연·행사", color: "--event" },
+const KINDS = {
+  flower: { label: "꽃·자연", color: "--flower", glyph: "꽃" },
+  cafe: { label: "카페", color: "--cafe", glyph: "카" },
+  music: { label: "음악·LP", color: "--music", glyph: "음" },
+  food: { label: "맛집", color: "--food", glyph: "맛" },
+  culture: { label: "전시·문화", color: "--culture", glyph: "문" },
+  view: { label: "전망", color: "--view", glyph: "뷰" },
+  event: { label: "행사", color: "--event", glyph: "행" },
 };
+const BEST_POST = { "2024 연말정산 BEST 12": "7873290849", "2025 상반기 BEST 10": "8616409840",
+  "2025 하반기 BEST 11": "8620976516", "2025 연말정산 Best 12": "9331222446" };
+const ORDER = ["flower", "cafe", "music", "food", "culture", "view", "event"];
 
-const SPOTS = [
-  { id: "guri", name: "구리 한강시민공원", type: "flower", area: "구리", sub: "코스모스 들판",
-    lat: 37.5756256, lng: 127.1425825, months: [10], seasonLabel: "10월 · 핑크 코스모스",
-    tips: ["10월에 피는 핑크 코스모스가 9월 황화 코스모스보다 훨씬 예쁨", "삼패지구보다는 붐비는 편"],
-    src: { kind: "작성자 답글", srl: "10264870625", title: "남양주 한강공원 코스모스 꽃밭", date: "2026.08.28" }, q: "구리한강시민공원" },
-  { id: "sampae", name: "남양주 한강공원 삼패지구", type: "flower", area: "남양주", sub: "황화 코스모스 꽃밭",
-    lat: 37.5923053, lng: 127.1951209, months: [8, 9], seasonLabel: "8월 말 ~ 9월 중순 · 황화 코스모스",
-    tips: ["한강공원 중 가장 한적함, 사람이 정말 적음", "공원 바로 앞 주차장, 자리 여유 있음", "빛까지 담으려면 오후 5시 반 전에 도착", "근처 팔당과 묶어서 가기 추천"],
-    src: { kind: "본문 + 작성자 답글", srl: "10264870625", title: "남양주 한강공원 코스모스 꽃밭", date: "2026.08.27" }, q: "한강공원삼패지구" },
-  { id: "sejong", name: "세종문화회관 예술의 정원", type: "event", area: "광화문", sub: "무료 재즈공연 ‘커튼 콜 가든’",
-    lat: 37.5725945, lng: 126.9757787, months: [10, 11], until: "2026-11-08", seasonLabel: "11월 8일까지 · 월요일 휴무",
-    tips: ["재즈 공연: 수~금 오후 6시 30분, 토 오후 5시", "정원은 오후 5시~11시 운영", "종로 데이트 코스에 끼워 넣기 좋음"],
-    src: { kind: "본문", srl: "10470205637", title: "~11.8) 광화문 세종문화회관 앞 무료 재즈공연", date: "2026.10.21" }, q: "세종문화회관" },
-  { id: "gongwon", name: "공원스크립트", type: "cafe", area: "용인 고기리", sub: "통창 숲뷰 청음실 카페",
-    lat: 37.3593762, lng: 127.0487408, months: [], seasonLabel: "사계절",
-    tips: ["1층은 푹신한 소파, 2층이 청음실", "작성자 기준 청음 카페 수십 곳 중 다섯 손가락 안", "고기리 막국수에서 걸어서 10분"],
-    src: { kind: "본문 + 작성자 답글", srl: "10466733765", title: "용인 고기리 통창 숲뷰 힐링되는 청음실 카페", date: "2026.10.20" }, q: "공원스크립트" },
-  { id: "noto", name: "노토", type: "cafe", area: "양재천", sub: "챗GPT 블렌딩 핸드드립 카페",
-    lat: 37.4821686, lng: 127.0392893, months: [], seasonLabel: "사계절",
-    tips: ["챗GPT가 추천한 원두 조합을 사장님이 핸드드립으로", "필터커피 5천 원, 양이 꽤 많음", "매장이 작아 오래 머물기는 불편"],
-    src: { kind: "본문", srl: "10450002478", title: "양재천 챗지피티가 골라주는 핸드드립 카페", date: "2026.10.15" }, q: "Noto" },
-];
+/* 톱니 모양 인증 배지 (자체 모양) */
+const VERIFIED = (() => {
+  const pts = [];
+  for (let i = 0; i < 24; i++) {
+    const r = i % 2 ? 10 : 12, a = (Math.PI * 2 * i) / 24;
+    pts.push(`${(12 + r * Math.sin(a)).toFixed(2)},${(12 - r * Math.cos(a)).toFixed(2)}`);
+  }
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="${pts.join(" ")}" fill="#1d9bf0"/>` +
+    `<path d="M7.2 12.4l3.1 3.1 6.5-6.7" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+})();
+document.querySelector(".vsvg").outerHTML = VERIFIED;
 
-const today = new Date();
-const month = today.getMonth() + 1;
-const ymd = `${today.getFullYear()}-${String(month).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-document.getElementById("today").textContent = `${month}월 ${today.getDate()}일 기준 · 스팟 ${SPOTS.length}곳 (시범)`;
-
-const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const status = (s) => (s.until && ymd > s.until) ? "over" : (s.months.includes(month) ? "now" : "");
+const now = new Date();
+const month = now.getMonth() + 1;
+const ymd = `${now.getFullYear()}-${String(month).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
                 set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+const fm = (id) => `https://www.fmkorea.com/${id}`;
 
-let typeFilter = "all", nowOnly = false, selId = null;
-const visible = () => SPOTS.filter((s) => (typeFilter === "all" || s.type === typeFilter) && (!nowOnly || status(s) === "now"));
+let SPOTS = [], byId = {};
+const F = { kind: "all", now: false, best: false, ver: false, rain: false, q: "" };
+let selId = null, engine = null, listLimit = 80;
+let PHOTO_IDX = null;   // 비공개 사이트에만 있는 photos/index.json (글번호 -> 사진 수)
 
-function pinHtml(s, idx) {
-  const st = status(s);
-  return `<div class="pin ${st === "now" ? "now" : ""} ${st === "over" ? "dim" : ""} ${s.id === selId ? "sel" : ""}"
-    data-id="${s.id}" style="--c:var(${TYPES[s.type].color})"><span>${idx}</span></div>`;
+/* ---------- 상태 계산 ---------- */
+function evState(s) {           // 행사: now / soon / over / ""
+  if (!s.ev) return "";
+  let st = "over";
+  for (const [, a, b] of s.ev) {
+    if (a && a > ymd) { if (st === "over") st = "soon"; continue; }
+    if (b && b >= ymd) return "now";
+    if (!b && a && (now - new Date(a)) / 864e5 <= 45) return "now";   // 종료일 모를 때는 시작 후 45일까지만
+  }
+  return st;
+}
+function status(s) {
+  const e = evState(s);
+  if (e === "now") return "now";
+  if (s.m && s.m.includes(month)) return "now";
+  if (e === "over" && s.g.length === 1 && s.g[0] === "event") return "over";
+  return "";
+}
+const stars = (s) => (s.b ? s.b.length : 0);
+const isVer = (s) => !!s.r;
+function rainRank(s) {      // 비 오는 날 정렬: 0 작성자 추천, 1 실내, 2 야외
+  if (s.rainNo) return 2;
+  if (s.rain) return 0;
+  return s.in ? 1 : 2;
+}
+function dimmed(s) {
+  if (F.rain) return rainRank(s) === 2;
+  return status(s) === "over";
 }
 
-/* ---------------- 지도 어댑터 ---------------- */
+function match(s) {
+  if (F.kind !== "all" && !s.g.includes(F.kind)) return false;
+  if (F.now && status(s) !== "now") return false;
+  if (F.best && !stars(s)) return false;
+  if (F.ver && !isVer(s)) return false;
+  if (F.q) {
+    const hay = `${s.n} ${s.a} ${s.cat.join(" ")} ${s.addr}`.toLowerCase();
+    if (!F.q.split(/\s+/).every((w) => hay.includes(w))) return false;
+  }
+  return true;
+}
+function sorted(list) {
+  const score = (s) => F.rain
+    ? [rainRank(s), -stars(s), s.n]
+    : [status(s) === "now" ? 0 : status(s) === "over" ? 2 : 1, -stars(s), s.p ? 0 : 1, s.n];
+  return list.slice().sort((a, b) => {
+    const x = score(a), y = score(b);
+    for (let i = 0; i < x.length; i++) { if (x[i] < y[i]) return -1; if (x[i] > y[i]) return 1; }
+    return 0;
+  });
+}
+const visible = () => SPOTS.filter(match);
+
+/* ---------- 핀 ---------- */
+function pinNode(s, far) {
+  const k = KINDS[s.g[0]];
+  const st = status(s);
+  const el = document.createElement("div");
+  if (far) {
+    el.className = `dotpin${stars(s) ? " best" : ""}${dimmed(s) ? " dim" : ""}${s.id === selId ? " sel" : ""}`;
+    el.style.setProperty("--c", `var(${k.color})`);
+    el.title = s.n;
+  } else {
+    el.className = `pw${st === "now" && !F.rain ? " now" : ""}${dimmed(s) ? " dim" : ""}${s.id === selId ? " sel" : ""}`;
+    el.style.setProperty("--c", `var(${k.color})`);
+    el.innerHTML = (stars(s) ? `<div class="bp">BEST ${"★".repeat(stars(s))}</div>` : "") +
+      `<div class="pin"><span>${k.glyph}</span></div>` +
+      (isVer(s) ? `<div class="vb">${VERIFIED}</div>` : "") +
+      (F.rain && s.rain ? `<div class="rb">☂</div>` : "");
+    el.title = s.n;
+  }
+  el.addEventListener("click", (e) => { e.stopPropagation(); select(s.id, false); });
+  return el;
+}
+
 function loadScript(src) {
   return new Promise((ok, fail) => {
     const el = document.createElement("script");
@@ -191,17 +312,17 @@ const Kakao = {
       await loadScript(`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KEYS.kakao}&autoload=false`);
       await new Promise((ok) => kakao.maps.load(ok));
     }
-    this.map = new kakao.maps.Map(el, { center: new kakao.maps.LatLng(37.5, 127.05), level: 9 });
+    this.map = new kakao.maps.Map(el, { center: new kakao.maps.LatLng(37.55, 126.99), level: 8 });
     this.map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
+    kakao.maps.event.addListener(this.map, "idle", () => drawPins(false));
     this.items = [];
   },
+  far() { return this.map.getLevel() >= 8; },
+  inView(s) { const b = this.map.getBounds(); return b.contain(new kakao.maps.LatLng(s.lat, s.lng)); },
   clear() { this.items.forEach((o) => o.setMap(null)); this.items = []; },
-  add(s, idx) {
-    const node = document.createElement("div");
-    node.innerHTML = pinHtml(s, idx);
-    node.firstElementChild.addEventListener("click", () => select(s.id, false));
-    const o = new kakao.maps.CustomOverlay({ position: new kakao.maps.LatLng(s.lat, s.lng), content: node.firstElementChild,
-      xAnchor: 0.5, yAnchor: 1.15, zIndex: s.id === selId ? 3 : 1 });
+  add(s, far) {
+    const o = new kakao.maps.CustomOverlay({ position: new kakao.maps.LatLng(s.lat, s.lng), content: pinNode(s, far),
+      xAnchor: 0.5, yAnchor: far ? 0.5 : 1, zIndex: s.id === selId ? 30 : stars(s) ? 3 : 1, clickable: true });
     o.setMap(this.map); this.items.push(o);
   },
   fit(list) {
@@ -211,7 +332,7 @@ const Kakao = {
     list.forEach((s) => b.extend(new kakao.maps.LatLng(s.lat, s.lng)));
     this.map.setBounds(b, 60, 40, 60, 40);
   },
-  focus(s) { this.map.setLevel(Math.min(this.map.getLevel(), 6)); this.map.panTo(new kakao.maps.LatLng(s.lat, s.lng)); },
+  focus(s) { if (this.map.getLevel() > 5) this.map.setLevel(5); this.map.panTo(new kakao.maps.LatLng(s.lat, s.lng)); },
   relayout() { this.map && this.map.relayout(); },
 };
 
@@ -220,14 +341,19 @@ const Naver = {
     if (!window.naver || !naver.maps || !naver.maps.Map) {
       await loadScript(`https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${KEYS.naver}`);
     }
-    this.map = new naver.maps.Map(el, { center: new naver.maps.LatLng(37.5, 127.05), zoom: 10,
+    this.map = new naver.maps.Map(el, { center: new naver.maps.LatLng(37.55, 126.99), zoom: 11,
       zoomControl: true, zoomControlOptions: { position: naver.maps.Position.RIGHT_CENTER } });
+    naver.maps.Event.addListener(this.map, "idle", () => drawPins(false));
     this.items = [];
   },
+  far() { return this.map.getZoom() <= 11; },
+  inView(s) { return this.map.getBounds().hasLatLng(new naver.maps.LatLng(s.lat, s.lng)); },
   clear() { this.items.forEach((o) => o.setMap(null)); this.items = []; },
-  add(s, idx) {
+  add(s, far) {
+    const node = pinNode(s, far);
     const m = new naver.maps.Marker({ map: this.map, position: new naver.maps.LatLng(s.lat, s.lng),
-      icon: { content: pinHtml(s, idx), anchor: new naver.maps.Point(15, 34) }, zIndex: s.id === selId ? 3 : 1 });
+      icon: { content: node, anchor: far ? new naver.maps.Point(7, 7) : new naver.maps.Point(15, stars(s) ? 54 : 36) },
+      zIndex: s.id === selId ? 30 : stars(s) ? 3 : 1 });
     naver.maps.Event.addListener(m, "click", () => select(s.id, false));
     this.items.push(m);
   },
@@ -238,17 +364,12 @@ const Naver = {
     list.forEach((s) => b.extend(new naver.maps.LatLng(s.lat, s.lng)));
     this.map.fitBounds(b, { top: 60, right: 40, bottom: 60, left: 40 });
   },
-  focus(s) { if (this.map.getZoom() < 13) this.map.setZoom(13); this.map.panTo(new naver.maps.LatLng(s.lat, s.lng)); },
+  focus(s) { if (this.map.getZoom() < 14) this.map.setZoom(14); this.map.panTo(new naver.maps.LatLng(s.lat, s.lng)); },
   relayout() { this.map && naver.maps.Event.trigger(this.map, "resize"); },
 };
 
-let engine = null;
 window.navermap_authFailure = () => showMapError("네이버 지도 인증에 실패했습니다. 네이버 클라우드의 Web 서비스 URL에 이 주소가 등록되어 있는지 확인해 주세요.");
-
-function showMapError(msg) {
-  const el = document.getElementById("map");
-  el.innerHTML = `<div class="maperr">${esc(msg)}</div>`;
-}
+function showMapError(msg) { document.getElementById("map").innerHTML = `<div class="maperr">${esc(msg)}</div>`; }
 
 async function useMap(kind) {
   store.set("spotmap.engine", kind);
@@ -259,91 +380,257 @@ async function useMap(kind) {
   el.id = "map";
   old.replaceWith(el);
   engine = kind === "kakao" ? Kakao : Naver;
-  try {
-    await engine.init(el);
-  } catch (e) {
+  try { await engine.init(el); }
+  catch (e) {
     engine = null;
     showMapError(kind === "kakao"
-      ? "카카오맵을 불러오지 못했습니다. 카카오 개발자 콘솔의 JavaScript SDK 도메인에 이 주소가 등록되어 있는지 확인해 주세요."
+      ? "카카오맵을 불러오지 못했습니다. 카카오 개발자 콘솔의 JavaScript SDK 도메인에 이 주소가 등록되어 있는지 확인해 주세요. (위의 '네이버 지도'로 바꿔 보셔도 됩니다)"
       : "네이버 지도를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
     return;
   }
-  drawPins(true);
+  drawPins(false);
 }
 
-/* ---------------- 목록과 상세 ---------------- */
+/* 지금 화면 안에 있는 핀만 그림 (축소하면 작은 점, BEST 알약은 숨김) */
 function drawPins(refit) {
+  if (!engine || !engine.map) return;
   const list = visible();
-  if (engine) {
-    engine.clear();
-    list.forEach((s, i) => engine.add(s, i + 1));
-    if (refit) engine.fit(list);
-  }
-  return list;
+  if (refit) engine.fit(list);
+  engine.clear();
+  const far = engine.far();
+  const order = list.slice().sort((a, b) => (dimmed(b) - dimmed(a)) || (stars(a) - stars(b)));
+  order.forEach((s) => { if (engine.inView(s) || s.id === selId) engine.add(s, far); });
 }
 
+/* ---------- 목록 ---------- */
+function kindLabel(s) { return s.g.map((g) => KINDS[g].label).join("·"); }
+function badgesHtml(s, full) {
+  const out = [];
+  const st = status(s);
+  if (stars(s)) out.push(`<span class="badge best">BEST ${"★".repeat(stars(s))}</span>`);
+  if (isVer(s)) out.push(`<span class="badge ver" title="작성자가 댓글로 추천">${VERIFIED}${full ? "작성자 인증" : ""}</span>`);
+  if (st === "now") out.push(`<span class="badge now">${evState(s) === "now" ? "진행 중" : "지금 시즌"}</span>`);
+  if (st === "over") out.push(`<span class="badge over">지난 행사</span>`);
+  if (s.rain) out.push(`<span class="badge rain">☂ 비 오는 날 추천</span>`);
+  if (s.notice) out.push(`<span class="badge warn">${esc(full ? s.notice : "휴무 안내")}</span>`);
+  return out.join("");
+}
+function firstTip(s) {
+  if (s.p && s.p[0][3]) return s.p[0][3];
+  if (s.r && s.r[0][3]) return "작성자 추천: " + s.r[0][3];
+  if (s.t && s.t[0][3]) return s.t[0][3];
+  return "";
+}
 function render(refit) {
-  const list = drawPins(refit);
+  const all = sorted(visible());
+  drawPins(refit);
   const cards = document.getElementById("cards");
   cards.innerHTML = "";
-  list.forEach((s, i) => {
-    const st = status(s);
+  all.slice(0, listLimit).forEach((s) => {
     const b = document.createElement("button");
     b.type = "button";
-    b.className = "card" + (s.id === selId ? " active" : "");
-    b.style.setProperty("--c", `var(${TYPES[s.type].color})`);
-    const badge = st === "now" ? `<span class="badge now">지금 시즌</span>` : st === "over" ? `<span class="badge over">기간 종료</span>` : `<span></span>`;
-    b.innerHTML = `<span class="name">${i + 1}. ${esc(s.name)}</span>${badge}
-      <span class="meta">${esc(s.area)} · ${esc(TYPES[s.type].label)} · ${esc(s.sub)}</span>
-      <span class="season">${esc(s.seasonLabel)}</span>`;
+    b.className = "card" + (s.id === selId ? " active" : "") + (dimmed(s) ? " dim" : "");
+    b.style.setProperty("--c", `var(${KINDS[s.g[0]].color})`);
+    b.innerHTML = `<span class="top"><span class="name">${esc(s.n)}</span>${badgesHtml(s, false)}</span>
+      <span class="meta">${esc(s.a)} · ${esc(kindLabel(s))}${s.sl ? " · " + esc(s.sl.map((x) => x.replace("-", "~") + "월").join(", ")) : ""}</span>
+      ${firstTip(s) ? `<span class="tip">${esc(firstTip(s))}</span>` : ""}`;
     b.addEventListener("click", () => select(s.id, true));
     cards.appendChild(b);
   });
-  document.getElementById("count").textContent = `${list.length}곳`;
-  if (!list.length) cards.innerHTML = `<p class="empty">조건에 맞는 스팟이 없습니다. 필터를 바꿔 보세요.</p>`;
+  if (all.length > listLimit) {
+    const m = document.createElement("button");
+    m.type = "button"; m.className = "more";
+    m.textContent = `${all.length - listLimit}곳 더 보기`;
+    m.addEventListener("click", () => { listLimit += 120; render(false); });
+    cards.appendChild(m);
+  }
+  document.getElementById("count").textContent = `${all.length}곳`;
+  document.getElementById("listtitle").textContent = F.rain ? "비 오는 날 추천 순" : "스팟";
+  if (!all.length) cards.innerHTML = `<p class="empty">조건에 맞는 스팟이 없습니다. 필터를 바꿔 보세요.</p>`;
 }
 
+/* ---------- 상세 ---------- */
+function evText(s) {
+  return s.ev.map(([name, a, b, id]) => {
+    const st = (a && a > ymd) ? "예정" : (b && b >= ymd) || (!b && a && (now - new Date(a)) / 864e5 <= 45) ? "진행 중" : "지남";
+    const period = a ? `${a.replaceAll("-", ".")}${b ? " ~ " + b.replaceAll("-", ".") : " ~ (종료일 미정)"}` : "기간 미정";
+    return `<li>${esc(name || "행사")} · ${esc(period)} <b>${st}</b><span class="from"><a href="${fm(id)}" target="_blank" rel="noopener">원글 보기</a></span></li>`;
+  }).join("");
+}
+function from(id, title, date, label) {
+  return `<span class="from">${label ? esc(label) + " · " : ""}<a href="${fm(id)}" target="_blank" rel="noopener">${esc(title)}</a> (${esc(date.replaceAll("-", "."))})</span>`;
+}
 function select(id, move) {
   selId = id;
-  const s = SPOTS.find((x) => x.id === id);
+  const s = byId[id];
   render(false);
-  if (engine && move) engine.focus(s);
-  const st = status(s);
-  const badge = st === "now" ? `<span class="badge now">지금 시즌</span>` : st === "over" ? `<span class="badge over">기간 종료</span>` : "";
+  if (engine && engine.map && move) engine.focus(s);
   const d = document.getElementById("detail");
-  d.innerHTML = `<button class="close" type="button" aria-label="닫기">×</button>
-    <h3>${esc(s.name)}</h3>
-    <div class="sub">${esc(s.area)} · ${esc(s.sub)}</div>
-    <div class="season">${badge}<span>${esc(s.seasonLabel)}</span></div>
-    <ul>${s.tips.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
-    <div class="src">출처: ${esc(s.src.kind)} · ${esc(s.src.title)} (${esc(s.src.date)})</div>
-    <div class="links">
-      <a href="https://www.fmkorea.com/${s.src.srl}" target="_blank" rel="noopener">원글 보기</a>
-      <a href="https://map.naver.com/p/search/${encodeURIComponent(s.q)}" target="_blank" rel="noopener">네이버 지도</a>
-      <a href="https://map.kakao.com/link/map/${encodeURIComponent(s.name)},${s.lat},${s.lng}" target="_blank" rel="noopener">카카오맵</a>
-      <a href="https://map.kakao.com/link/to/${encodeURIComponent(s.name)},${s.lat},${s.lng}" target="_blank" rel="noopener">길찾기</a>
+  const nq = `${s.n.replace(/\(.*?\)/g, "").trim()} ${s.a.split(" ").slice(-1)[0] || ""}`.trim();
+  const kakaoLink = s.ku || `https://map.kakao.com/link/map/${encodeURIComponent(s.n)},${s.lat},${s.lng}`;
+  let h = `<button class="close" type="button" aria-label="닫기">×</button>
+    <h3>${esc(s.n)}</h3>
+    <div class="sub">${esc(s.a)} · ${esc(s.cat.join(", "))}${s.sl ? " · " + esc(s.sl.map((x) => x.replace("-", "~") + "월").join(", ")) : ""}</div>
+    <div class="tags">${badgesHtml(s, true)}</div>`;
+  const photoPids = PHOTO_IDX && s.p ? s.p.map((x) => x[0]).filter((pid) => PHOTO_IDX[pid]) : [];
+  if (photoPids.length) h += `<div class="gal" id="topgal" data-pid="${photoPids[0]}"></div>`;
+  if (s.b) h += `<div class="note">BEST 선정: ${s.b.map((l) => BEST_POST[l]
+      ? `<a href="${fm(BEST_POST[l])}" target="_blank" rel="noopener" style="color:inherit">${esc(l)}</a>` : esc(l)).join(" / ")}</div>`;
+  if (F.rain && s.rainNo) h += `<div class="note">☂ 비 오는 날 주의: ${esc(s.rainNo)}</div>`;
+  if (s.ev) h += `<h4>행사 기간</h4><ul>${evText(s)}</ul>`;
+  if (s.p) h += `<h4>작성자 팁</h4><ul>${s.p.map(([pid, title, date, tip]) => `<li>${esc(tip)}${from(pid, title, date)}${
+      PHOTO_IDX && PHOTO_IDX[pid] && pid !== photoPids[0] ? `<button type="button" class="galbtn" data-pid="${pid}">사진 ${PHOTO_IDX[pid]}장 보기</button><div class="gal" data-for="${pid}" hidden></div>` : ""}</li>`).join("")}</ul>`;
+  if (s.rain) h += `<h4>☂ 비 오는 날 추천 이유</h4><ul>${s.rain.map(([pid, title, date, ctx]) => `<li>${esc(ctx)}${from(pid, title, date)}</li>`).join("")}</ul>`;
+  if (s.r) h += `<h4>작성자 댓글 추천</h4><ul>${s.r.map(([pid, title, date, ctx]) => `<li>${esc(ctx)}${from(pid, title, date, "댓글")}</li>`).join("")}</ul>`;
+  if (s.t) h += `<h4>함께 언급된 글</h4><ul>${s.t.map(([pid, title, date, ctx]) => `<li>${esc(ctx)}${from(pid, title, date)}</li>`).join("")}</ul>`;
+  if (s.addr) h += `<div class="sub" style="margin-top:10px">${esc(s.addr)}</div>`;
+  h += `<div class="links">
+      <a href="https://map.naver.com/p/search/${encodeURIComponent(nq)}" target="_blank" rel="noopener">네이버 지도</a>
+      <a href="${esc(kakaoLink)}" target="_blank" rel="noopener">카카오맵</a>
+      <a href="https://map.kakao.com/link/to/${encodeURIComponent(s.n)},${s.lat},${s.lng}" target="_blank" rel="noopener">길찾기</a>
     </div>`;
+  d.innerHTML = h;
   d.hidden = false;
+  d.scrollTop = 0;
   d.querySelector(".close").addEventListener("click", () => { d.hidden = true; selId = null; render(false); });
+  d.querySelectorAll(".galbtn").forEach((b) => b.addEventListener("click", () => openGallery(b)));
+  const top = d.querySelector("#topgal");   // 이 장소 대표 글 사진을 맨 위에 바로 보여 줌
+  if (top) getPhotos(top.dataset.pid).then((list) => {
+    if (selId !== id) return;
+    list.forEach((src, i) => {
+      const im = document.createElement("img");
+      im.loading = "lazy"; im.src = src; im.alt = `사진 ${i + 1}`;
+      im.addEventListener("click", () => showLb(list, i));
+      top.appendChild(im);
+    });
+  });
   if (move && window.matchMedia("(max-width: 760px)").matches) document.querySelector(".mapwrap").scrollIntoView({ behavior: "smooth" });
 }
 
-document.querySelectorAll(".chip[data-type]").forEach((c) => c.addEventListener("click", () => {
-  typeFilter = c.dataset.type;
-  document.querySelectorAll(".chip[data-type]").forEach((x) => x.setAttribute("aria-pressed", String(x === c)));
-  render(true);
-}));
-document.getElementById("f-now").addEventListener("click", (e) => {
-  nowOnly = !nowOnly;
-  e.currentTarget.setAttribute("aria-pressed", String(nowOnly));
-  render(true);
+/* ---------- 사진 ---------- */
+const photoCache = {};
+async function getPhotos(pid) {
+  if (!photoCache[pid]) photoCache[pid] = fetch(`photos/${pid}.json`).then((r) => r.json()).catch(() => []);
+  return photoCache[pid];
+}
+async function openGallery(btn) {
+  const pid = btn.dataset.pid;
+  const box = btn.nextElementSibling;
+  if (!box.hidden) { box.hidden = true; btn.textContent = `사진 ${PHOTO_IDX[pid]}장 보기`; return; }
+  btn.textContent = "불러오는 중…";
+  const list = await getPhotos(pid);
+  box.innerHTML = "";
+  list.forEach((src, i) => {
+    const im = document.createElement("img");
+    im.loading = "lazy"; im.src = src; im.alt = `사진 ${i + 1}`;
+    im.addEventListener("click", () => showLb(list, i));
+    box.appendChild(im);
+  });
+  box.hidden = false;
+  btn.textContent = "사진 접기";
+}
+let lbList = [], lbI = 0;
+function showLb(list, i) { lbList = list; lbI = i; drawLb(); document.getElementById("lb").hidden = false; }
+function drawLb() { document.getElementById("lbimg").src = lbList[lbI]; document.getElementById("lbcnt").textContent = `${lbI + 1} / ${lbList.length}`; }
+document.getElementById("lbprev").addEventListener("click", (e) => { e.stopPropagation(); lbI = (lbI + lbList.length - 1) % lbList.length; drawLb(); });
+document.getElementById("lbnext").addEventListener("click", (e) => { e.stopPropagation(); lbI = (lbI + 1) % lbList.length; drawLb(); });
+document.getElementById("lbclose").addEventListener("click", () => { document.getElementById("lb").hidden = true; });
+document.getElementById("lb").addEventListener("click", (e) => { if (e.target.id === "lb") e.currentTarget.hidden = true; });
+document.addEventListener("keydown", (e) => {
+  if (document.getElementById("lb").hidden) return;
+  if (e.key === "Escape") document.getElementById("lb").hidden = true;
+  if (e.key === "ArrowRight") document.getElementById("lbnext").click();
+  if (e.key === "ArrowLeft") document.getElementById("lbprev").click();
 });
-document.getElementById("m-kakao").addEventListener("click", () => useMap("kakao"));
-document.getElementById("m-naver").addEventListener("click", () => useMap("naver"));
-window.addEventListener("resize", () => engine && engine.relayout());
 
-render(false);
-useMap(store.get("spotmap.engine") === "naver" ? "naver" : "kakao");
+/* ---------- 필터 ---------- */
+function buildKinds() {
+  const box = document.getElementById("kinds");
+  const mk = (key, label, color) => {
+    const b = document.createElement("button");
+    b.className = "chip"; b.type = "button"; b.dataset.kind = key;
+    b.setAttribute("aria-pressed", String(F.kind === key));
+    b.innerHTML = (color ? `<i class="dot" style="background:var(${color})"></i>` : "") + esc(label);
+    b.addEventListener("click", () => {
+      F.kind = key; listLimit = 80;
+      box.querySelectorAll(".chip").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      render(true);
+    });
+    box.appendChild(b);
+  };
+  mk("all", "전체");
+  ORDER.forEach((k) => mk(k, KINDS[k].label, KINDS[k].color));
+}
+function toggle(id, key) {
+  document.getElementById(id).addEventListener("click", (e) => {
+    F[key] = !F[key]; listLimit = 80;
+    e.currentTarget.setAttribute("aria-pressed", String(F[key]));
+    render(key !== "rain");
+  });
+}
+function setRain(on) {
+  F.rain = on;
+  if (on) document.getElementById("rainbar").hidden = true;
+  document.getElementById("f-rain").setAttribute("aria-pressed", String(on));
+  listLimit = 80;
+  render(false);
+}
+
+/* ---------- 날씨 (Open-Meteo, 서울 시청 기준) ---------- */
+async function checkWeather() {
+  const force = new URLSearchParams(location.search).get("rain");
+  let msg = null;
+  if (force === "1") msg = "미리보기: 비 오는 날 화면";
+  else {
+    try {
+      const u = "https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.978&current=precipitation,weather_code" +
+        "&daily=precipitation_probability_max,precipitation_sum&timezone=Asia%2FSeoul&forecast_days=1";
+      const r = await fetch(u);
+      const w = await r.json();
+      const nowRain = (w.current && (w.current.precipitation > 0 || [51,53,55,61,63,65,66,67,80,81,82,95,96,99].includes(w.current.weather_code)));
+      const prob = w.daily ? w.daily.precipitation_probability_max[0] : 0;
+      const sum = w.daily ? w.daily.precipitation_sum[0] : 0;
+      if (nowRain) msg = "지금 서울에 비가 오고 있어요";
+      else if (prob >= 60 || sum >= 1) msg = `오늘 서울에 비 소식이 있어요 (강수확률 ${prob}%)`;
+    } catch (e) { /* 날씨를 못 받아와도 지도는 평소대로 */ }
+  }
+  if (!msg) return;
+  const bar = document.getElementById("rainbar");
+  bar.innerHTML = `<span>☂ <b>${esc(msg)}</b> · 작성자가 비 오는 날 추천한 곳과 실내 장소를 먼저 보여 드릴까요?</span>
+    <button type="button" id="rain-go">비 오는 날 추천 보기</button><button type="button" class="x" id="rain-x" aria-label="닫기">닫기</button>`;
+  bar.hidden = false;
+  document.getElementById("rain-go").addEventListener("click", () => { setRain(true); bar.hidden = true; });
+  document.getElementById("rain-x").addEventListener("click", () => { bar.hidden = true; });
+}
+
+/* ---------- 시작 ---------- */
+async function start() {
+  try {
+    const r = await fetch("spots.json", { cache: "no-cache" });
+    SPOTS = await r.json();
+  } catch (e) {
+    document.getElementById("cards").innerHTML = `<p class="empty">스팟 목록(spots.json)을 불러오지 못했습니다.</p>`;
+    return;
+  }
+  SPOTS.forEach((s) => { byId[s.id] = s; });
+  try { const r = await fetch("photos/index.json", { cache: "no-cache" }); if (r.ok) PHOTO_IDX = await r.json(); } catch (e) {}
+  document.getElementById("today").textContent = `${month}월 ${now.getDate()}일 기준 · 스팟 ${SPOTS.length}곳 · 너른고을사진사 글 기반`;
+  buildKinds();
+  toggle("f-now", "now"); toggle("f-best", "best"); toggle("f-ver", "ver");
+  document.getElementById("f-rain").addEventListener("click", () => setRain(!F.rain));
+  let t = null;
+  document.getElementById("q").addEventListener("input", (e) => {
+    clearTimeout(t);
+    t = setTimeout(() => { F.q = e.target.value.trim().toLowerCase(); listLimit = 80; render(!!F.q); }, 200);
+  });
+  document.getElementById("m-kakao").addEventListener("click", () => useMap("kakao"));
+  document.getElementById("m-naver").addEventListener("click", () => useMap("naver"));
+  window.addEventListener("resize", () => engine && engine.relayout());
+  render(false);
+  useMap(store.get("spotmap.engine") === "naver" ? "naver" : "kakao");
+  checkWeather();
+}
+start();
 </script>
 </body>
 </html>
