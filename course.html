@@ -76,6 +76,13 @@ textarea:focus { outline: 2px solid var(--accent); outline-offset: 0; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .seg button { font: inherit; font-size: 12.5px; padding: 5px 9px; border: 0; background: var(--panel); color: var(--muted); cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+.rec { font: inherit; font-size: 12.5px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; white-space: nowrap; }
+.rec::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #e5484d; margin-right: 5px; vertical-align: 1px; }
+.rec:disabled { opacity: .6; cursor: default; }
+body.recording .player { display: none; }
+.recnote { position: absolute; z-index: 6; left: 50%; bottom: 16px; transform: translateX(-50%); background: #e5484d; color: #fff;
+  font-size: 12.5px; padding: 5px 12px; border-radius: 999px; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.recnote[hidden] { display: none; }
 .follow { font-size: 12.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap; }
 
 .toast { position: absolute; z-index: 5; top: 12px; left: 50%; transform: translateX(-50%); max-width: min(440px, calc(100% - 24px));
@@ -135,6 +142,7 @@ textarea:focus { outline: 2px solid var(--accent); outline-offset: 0; }
   <div class="mapwrap">
     <div id="map"></div>
     <div class="toast" id="toast" hidden></div>
+    <div class="recnote" id="recnote" hidden></div>
     <div class="player" id="player" hidden>
       <button class="pb" type="button" id="play" aria-label="재생">▶</button>
       <button class="pb ghost" type="button" id="restart" aria-label="처음부터">↺</button>
@@ -145,6 +153,7 @@ textarea:focus { outline: 2px solid var(--accent); outline-offset: 0; }
         <button type="button" data-sp="2" aria-pressed="false">2×</button>
       </div>
       <label class="follow"><input type="checkbox" id="follow"> 구간마다 확대</label>
+      <button class="rec" type="button" id="rec" hidden>영상으로 저장</button>
     </div>
   </div>
 </div>
@@ -271,7 +280,8 @@ function buildTimeline(legs) {
 
 /* ── 지도 ─────────────────────────────────────────────── */
 const $ = (id) => document.getElementById(id);
-let map, geocoder, places, SPOTS = [];
+let map, geocoder, places, zoomCtl, SPOTS = [];
+let onEnd = null; // 재생이 끝났을 때 한 번 부를 함수 (녹화용)
 let course = null; // { stops:[...], legs:[...], tl, total }
 let T = 0, playing = false, speed = 1, lastTs = 0, curStop = -1, curLeg = -2;
 
@@ -288,7 +298,8 @@ async function initMap() {
     return false;
   }
   map = new kakao.maps.Map($("map"), { center: new kakao.maps.LatLng(37.5, 126.75), level: 9 });
-  map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
+  zoomCtl = new kakao.maps.ZoomControl();
+  map.addControl(zoomCtl, kakao.maps.ControlPosition.RIGHT);
   geocoder = new kakao.maps.services.Geocoder();
   places = new kakao.maps.services.Places();
   addEventListener("resize", () => map.relayout());
@@ -532,7 +543,7 @@ function tick(ts) {
   if (!playing) return;
   const dt = lastTs ? (ts - lastTs) / 1000 : 0; lastTs = ts;
   T += dt * speed;
-  if (T >= course.total) { T = course.total; playing = false; }
+  if (T >= course.total) { T = course.total; playing = false; if (onEnd) { const f = onEnd; onEnd = null; f(); } }
   render();
   if (playing) requestAnimationFrame(tick);
 }
@@ -551,6 +562,78 @@ function jumpTo(i) {
   if (map.getLevel() > 6) map.setLevel(6);
   map.panTo(new kakao.maps.LatLng(st.lat, st.lng));
 }
+
+/* ── 영상으로 저장 (PC 크롬·엣지: 탭 녹화 + 지도 영역만 잘라내기) ── */
+const canRecord = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia && window.MediaRecorder) && !matchMedia("(pointer: coarse)").matches;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function pickMime() {
+  for (const m of ["video/mp4;codecs=avc1.640028", "video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm"])
+    if (MediaRecorder.isTypeSupported(m)) return m;
+  return "";
+}
+function stamp() {
+  const d = new Date(), z = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}${z(d.getMonth() + 1)}${z(d.getDate())}_${z(d.getHours())}${z(d.getMinutes())}`;
+}
+function recNote(t) { $("recnote").textContent = t || ""; $("recnote").hidden = !t; }
+
+async function record() {
+  if (!course) return;
+  const btn = $("rec");
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: 30, cursor: "never", displaySurface: "browser" }, audio: false,
+      preferCurrentTab: true, selfBrowserSurface: "include", surfaceSwitching: "exclude",
+    });
+  } catch (e) { msg("녹화를 시작하지 못했어요. 탭 공유를 허용해야 녹화할 수 있어요."); return; }
+  const track = stream.getVideoTracks()[0];
+  btn.disabled = true; btn.textContent = "녹화 중…";
+  playing = false; onEnd = null;
+  document.body.classList.add("recording");
+  map.removeControl(zoomCtl);
+  // 지도 영역만 잘라내기 (지원 안 하면 탭 전체)
+  let cropped = false;
+  try { if (window.CropTarget && track.cropTo) { await track.cropTo(await CropTarget.fromElement(document.querySelector(".mapwrap"))); cropped = true; } } catch (e) {}
+  // 공유 알림줄 때문에 화면 크기가 바뀔 수 있어서 잠깐 기다렸다가 다시 맞춤
+  await sleep(900);
+  map.relayout(); curLeg = -2; fitAll(); T = 0; render();
+  recNote("● 녹화 준비 중 — 마우스를 지도 밖으로 빼 주세요");
+  await sleep(1300);
+  recNote("");
+  await sleep(300);
+
+  const mime = pickMime();
+  const rec = new MediaRecorder(stream, { ...(mime ? { mimeType: mime } : {}), videoBitsPerSecond: 8_000_000 });
+  const chunks = [];
+  rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+  const done = new Promise((ok) => { rec.onstop = ok; });
+  let stopped = false;
+  const stop = () => { if (stopped) return; stopped = true; if (rec.state !== "inactive") rec.stop(); };
+  track.addEventListener("ended", stop); // 사용자가 '공유 중지'를 누른 경우
+  rec.start(500);
+  await sleep(600); // 시작 화면을 잠깐 담기
+  onEnd = async () => { await sleep(1500); stop(); };
+  play(true);
+  await done;
+
+  stream.getTracks().forEach((t) => t.stop());
+  playing = false; onEnd = null;
+  document.body.classList.remove("recording");
+  map.addControl(zoomCtl, kakao.maps.ControlPosition.RIGHT);
+  map.relayout(); render();
+  btn.disabled = false; btn.textContent = "영상으로 저장";
+  if (!chunks.length) { msg("녹화된 내용이 없어요. 다시 시도해 주세요."); return; }
+  const type = rec.mimeType || mime || "video/webm";
+  const ext = type.includes("mp4") ? "mp4" : "webm";
+  const blob = new Blob(chunks, { type });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = `코스_${stamp()}.${ext}`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  msg(`영상을 저장했어요 (${ext}, ${(blob.size / 1048576).toFixed(1)}MB)${cropped ? "" : " — 이 브라우저는 지도만 잘라내기를 지원하지 않아 탭 전체가 찍혔어요"}.${ext === "webm" ? " 카카오톡에서 안 열리면 크롬을 최신으로 업데이트한 뒤 다시 저장해 주세요." : ""}`, true);
+}
+if (canRecord) { $("rec").hidden = false; $("rec").addEventListener("click", record); }
 
 /* ── 시작 ── */
 $("go").addEventListener("click", draw);
