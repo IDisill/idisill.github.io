@@ -586,7 +586,12 @@ async function record() {
       video: { frameRate: 30, cursor: "never", displaySurface: "browser" }, audio: false,
       preferCurrentTab: true, selfBrowserSurface: "include", surfaceSwitching: "exclude",
     });
-  } catch (e) { msg("녹화를 시작하지 못했어요. 탭 공유를 허용해야 녹화할 수 있어요."); return; }
+  } catch (e) {
+    msg(/Claude\//.test(navigator.userAgent)
+      ? "Claude 앱 안의 브라우저는 화면 녹화를 지원하지 않아요. 크롬이나 엣지에서 이 주소를 열어 녹화해 주세요."
+      : `녹화를 시작하지 못했어요. 탭 공유 창에서 '이 탭'을 허용해야 녹화돼요. (${e.name || "오류"})`);
+    return;
+  }
   const track = stream.getVideoTracks()[0];
   btn.disabled = true; btn.textContent = "녹화 중…";
   playing = false; onEnd = null;
