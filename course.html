@@ -80,8 +80,8 @@ textarea:focus { outline: 2px solid var(--accent); outline-offset: 0; }
 .rec::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #e5484d; margin-right: 5px; vertical-align: 1px; }
 .rec:disabled { opacity: .6; cursor: default; }
 body.recording .player { display: none; }
-.recnote { position: absolute; z-index: 6; left: 50%; bottom: 16px; transform: translateX(-50%); background: #e5484d; color: #fff;
-  font-size: 12.5px; padding: 5px 12px; border-radius: 999px; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.recnote { position: absolute; z-index: 6; left: 50%; top: 50%; max-width: min(420px, calc(100% - 24px)); text-align: center; background: #e5484d; color: #fff;
+  font-size: 13.5px; padding: 8px 14px; border-radius: 12px; transform: translate(-50%, -50%); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
 .recnote[hidden] { display: none; }
 .follow { font-size: 12.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap; }
 
@@ -581,17 +581,20 @@ async function record() {
   if (!course) return;
   const btn = $("rec");
   let stream;
+  recNote("탭 공유 창에서 '공유'를 눌러 주세요");
   try {
     stream = await navigator.mediaDevices.getDisplayMedia({
       video: { frameRate: 30, cursor: "never", displaySurface: "browser" }, audio: false,
       preferCurrentTab: true, selfBrowserSurface: "include", surfaceSwitching: "exclude",
     });
   } catch (e) {
-    msg(/Claude\//.test(navigator.userAgent)
-      ? "Claude 앱 안의 브라우저는 화면 녹화를 지원하지 않아요. 크롬이나 엣지에서 이 주소를 열어 녹화해 주세요."
-      : `녹화를 시작하지 못했어요. 탭 공유 창에서 '이 탭'을 허용해야 녹화돼요. (${e.name || "오류"})`);
+    const t = /Claude\//.test(navigator.userAgent)
+      ? "Claude 앱 안의 브라우저는 화면 녹화가 안 돼요. 크롬이나 엣지에서 이 주소를 열어 주세요."
+      : `녹화를 시작하지 못했어요. 탭 공유 창에서 '공유'를 눌러야 녹화돼요. (${e.name || "오류"})`;
+    msg(t); recNote(t); setTimeout(() => recNote(""), 7000);
     return;
   }
+  recNote("");
   const track = stream.getVideoTracks()[0];
   btn.disabled = true; btn.textContent = "녹화 중…";
   playing = false; onEnd = null;
