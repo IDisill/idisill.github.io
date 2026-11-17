@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>코스 미리보기 · 너른고을 스팟 지도</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+:root {
+  --bg: #eef1f0; --panel: #ffffff; --ink: #1d2523; --muted: #5d6965; --line: #d6dcda;
+  --accent: #1f6f66; --hl-bg: #f3f9d9; --warn: #b54708; --warn-bg: #fff4e5;
+  --neon: #c6ff00; --neon-deep: #1d2523;
+  --font-display: "Do Hyeon", "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #121716; --panel: #1a201f; --ink: #e6ebe9; --muted: #9aa7a3; --line: #2c3533;
+    --accent: #4cc1b2; --hl-bg: #2a3315; --warn: #f5a35c; --warn-bg: #3a2a17; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.5 var(--font-body); }
+.layout { display: grid; grid-template-columns: 360px 1fr; height: 100dvh; }
+aside { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+.head { padding: 12px 14px 10px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.head h1 { font: 400 24px/1.1 var(--font-display); margin: 0; }
+.head a { color: var(--muted); font-size: 12.5px; text-decoration: none; white-space: nowrap; }
+.head a:hover { color: var(--ink); }
+.scroll { overflow: auto; padding: 12px 14px 24px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+textarea { width: 100%; min-height: 130px; resize: vertical; font: 13.5px/1.55 var(--font-body); color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; }
+textarea:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+.help { font-size: 12px; color: var(--muted); margin: -2px 0 0; }
+.help b { color: var(--ink); font-weight: 600; }
+.btns { display: flex; gap: 8px; }
+.btn { font: inherit; font-size: 13.5px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; flex: 1; }
+.btn:disabled { opacity: .5; cursor: default; }
+.msg { font-size: 12.5px; padding: 7px 10px; border-radius: 8px; background: var(--warn-bg); color: var(--warn); }
+.msg:empty { display: none; }
+.msg.info { background: var(--bg); color: var(--muted); }
+.stops { display: flex; flex-direction: column; }
+.stop { display: grid; grid-template-columns: 30px 1fr; gap: 9px; padding: 8px; border-radius: 10px; cursor: pointer; text-align: left;
+  font: inherit; color: inherit; background: transparent; border: 0; width: 100%; }
+.stop:hover { background: var(--bg); }
+.stop.cur { background: var(--hl-bg); }
+.stop .num { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--neon-deep); color: var(--neon);
+  font: 400 15px/1 var(--font-display); }
+.stop.miss { cursor: default; }
+.stop.miss .num { background: var(--line); color: var(--muted); }
+.stop .name { font: 400 17px/1.25 var(--font-display); }
+.stop .time { font: 600 12px/1 var(--font-body); color: var(--accent); margin-right: 5px; }
+.stop .sub { font-size: 12px; color: var(--muted); }
+.stop .spot { margin-top: 4px; font-size: 12.5px; padding: 5px 8px; border-radius: 8px; background: var(--bg); }
+.stop .spot b { font-weight: 600; }
+.stop .spot a { color: var(--accent); text-decoration: none; white-space: nowrap; }
+.stop .err { font-size: 12px; color: var(--warn); }
+.leg { margin-left: 22px; padding: 2px 0 2px 25px; border-left: 2px dashed var(--line); font-size: 12px; color: var(--muted); }
+.leg .w { color: var(--warn); }
+
+.mapwrap { position: relative; min-height: 0; }
+#map { position: absolute !important; inset: 0; width: 100%; height: 100%; background: var(--bg); }
+.maperr { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
+
+.player { position: absolute; z-index: 5; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); max-width: 620px; margin: 0 auto;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.18);
+  padding: 7px 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.player[hidden] { display: none; }
+.player .pb { font: inherit; font-size: 15px; width: 36px; height: 34px; border-radius: 8px; border: 0; background: var(--neon-deep); color: var(--neon); cursor: pointer; }
+.player .pb.ghost { background: var(--bg); color: var(--ink); }
+.player input[type=range] { flex: 1; min-width: 140px; accent-color: var(--accent); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { font: inherit; font-size: 12.5px; padding: 5px 9px; border: 0; background: var(--panel); color: var(--muted); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+.follow { font-size: 12.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap; }
+
+.toast { position: absolute; z-index: 5; top: 12px; left: 50%; transform: translateX(-50%); max-width: min(440px, calc(100% - 24px));
+  background: var(--neon-deep); color: #fff; border-radius: 12px; padding: 8px 14px; box-shadow: 0 4px 16px rgba(0,0,0,.25);
+  font-size: 13px; transition: opacity .25s; }
+.toast[hidden] { display: block; opacity: 0; pointer-events: none; }
+.toast .t1 { font: 400 18px/1.25 var(--font-display); color: var(--neon); }
+.toast .t2 { color: #cfd8d5; font-size: 12.5px; }
+
+/* 지도 위 표시 */
+.cdot { width: 18px; height: 18px; border-radius: 50%; background: var(--neon); border: 3px solid var(--neon-deep);
+  box-shadow: 0 0 0 4px rgba(198,255,0,.35), 0 0 18px 6px rgba(198,255,0,.75); position: relative; }
+.cdot::after { content: ""; position: absolute; inset: -9px; border-radius: 50%; border: 2px solid var(--neon); animation: pulse 1.2s ease-out infinite; }
+@keyframes pulse { from { transform: scale(.6); opacity: 1; } to { transform: scale(1.5); opacity: 0; } }
+.cstop { position: relative; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+  background: #fff; color: var(--neon-deep); border: 2.5px solid var(--neon-deep); font: 400 14px/1 var(--font-display);
+  box-shadow: 0 1px 4px rgba(0,0,0,.35); transition: background .2s, color .2s; cursor: pointer; }
+.cstop.on { background: var(--neon-deep); color: #c6ff00; }
+.cstop .lb { position: absolute; bottom: 31px; left: 50%; transform: translateX(-50%); white-space: nowrap; font: 600 12px/1 var(--font-body);
+  background: var(--neon-deep); color: #fff; padding: 4px 7px; border-radius: 6px; opacity: 0; transition: opacity .3s; pointer-events: none; }
+.cstop.on .lb { opacity: 1; }
+.cstop.cur { transform: scale(1.15); }
+.cstop.cur .lb { background: #c6ff00; color: var(--neon-deep); }
+@media (prefers-reduced-motion: reduce) { .cdot::after { animation: none; } }
+
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; grid-template-rows: auto; height: auto; }
+  .mapwrap { order: -1; height: 56dvh; position: sticky; top: 0; z-index: 2; }
+  aside { border-right: 0; }
+  .scroll { overflow: visible; }
+  .player { gap: 6px; padding: 6px 8px; }
+  .player input[type=range] { order: 9; flex-basis: 100%; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside aria-label="코스 입력">
+    <div class="head">
+      <h1>코스 미리보기</h1>
+      <a href="./">← 스팟 지도</a>
+    </div>
+    <div class="scroll">
+      <textarea id="src" spellcheck="false" aria-label="코스 입력" placeholder="출발지: 서울역
+경유지: 12:30 덕수궁 돌담길
+경유지: 정동전망대
+도착지: 서울 중구 세종대로 136"></textarea>
+      <p class="help">한 줄에 한 곳씩. <b>이름+주소</b>, <b>주소만</b>, <b>이름만</b> 모두 됩니다. 시간은 <b>12:30</b>처럼 적으면 같이 표시돼요. 꼭 지나가야 할 길은 <b>통과: 인천대교</b>처럼 적으면 그 길로 이어 줍니다(지도에 번호는 안 붙어요). 입력한 코스는 이 브라우저에만 남고 어디에도 올라가지 않습니다.</p>
+      <div class="btns">
+        <button class="btn primary" type="button" id="go">지도에 그리기</button>
+        <button class="btn" type="button" id="clear">지우기</button>
+      </div>
+      <div class="msg" id="msg" role="status"></div>
+      <div class="stops" id="stops"></div>
+    </div>
+  </aside>
+  <div class="mapwrap">
+    <div id="map"></div>
+    <div class="toast" id="toast" hidden></div>
+    <div class="player" id="player" hidden>
+      <button class="pb" type="button" id="play" aria-label="재생">▶</button>
+      <button class="pb ghost" type="button" id="restart" aria-label="처음부터">↺</button>
+      <input type="range" id="scrub" min="0" max="1000" value="0" aria-label="진행 위치">
+      <div class="seg" role="group" aria-label="속도">
+        <button type="button" data-sp="0.5" aria-pressed="false">0.5×</button>
+        <button type="button" data-sp="1" aria-pressed="true">1×</button>
+        <button type="button" data-sp="2" aria-pressed="false">2×</button>
+      </div>
+      <label class="follow"><input type="checkbox" id="follow"> 구간마다 확대</label>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const KAKAO_KEY = "f800c144d4b8b3d8bb8c36018053cbae";
+const OSRM = "https://router.project-osrm.org/route/v1/driving/";
+const STORE = "course.last";
+const fm = (id) => `https://www.fmkorea.com/${id}`;
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// <pure> ── 입력 해석·경로 계산 (지도와 무관)
+const REGIONS = ["서울특별시", "서울시", "서울", "부산광역시", "부산", "대구광역시", "대구", "인천광역시", "인천시", "인천", "광주광역시", "광주",
+  "대전광역시", "대전", "울산광역시", "울산", "세종특별자치시", "세종", "경기도", "경기", "강원특별자치도", "강원도", "강원",
+  "충청북도", "충북", "충청남도", "충남", "전북특별자치도", "전라북도", "전북", "전라남도", "전남", "경상북도", "경북",
+  "경상남도", "경남", "제주특별자치도", "제주도", "제주"];
+const REGION_RE = new RegExp(`(?:^|\\s)(${REGIONS.join("|")})(?=\\s)`, "g");
+const ADDR_RE = /^(.+?(?:로|길)\s*\d+(?:-\d+)?|.+?(?:동|리|가)\s+(?:산\s*)?\d+(?:-\d+)?)(?=[\s,]|$)/;
+const ROLE_RE = /^(출발지?|시작|경유지?|도착지?|도착|끝|통과|지나감)\s*[:：]\s*/;
+const TIME_RE = /(\d{1,2}:\d{2}(?:\s*[~\-–]\s*\d{1,2}:\d{2})?)/;
+// 2026.7 인천 행정구역 개편 대비: 주소검색이 안 되면 옛/새 구 이름으로 다시 시도
+const DISTRICT_ALT = [["영종구", "중구"], ["제물포구", "중구"], ["제물포구", "동구"], ["검단구", "서구"], ["인천 중구", "인천 영종구"], ["인천광역시 중구", "인천광역시 영종구"]];
+
+function parseLine(raw) {
+  let line = raw.trim().replace(/^[-*•·\d.)\s]+(?=[가-힣A-Za-z])/, "");
+  if (!line) return null;
+  let role = "stop";
+  const rm = line.match(ROLE_RE);
+  if (rm) { if (/통과|지나감/.test(rm[1])) role = "via"; line = line.slice(rm[0].length); }
+  let time = "";
+  const tm = line.match(TIME_RE);
+  if (tm) { time = tm[1].replace(/\s+/g, ""); line = (line.slice(0, tm.index) + " " + line.slice(tm.index + tm[0].length)).replace(/\s+/g, " ").trim(); }
+  line = line.replace(/[(\[]\s*[)\]]/g, " ").replace(/\s+/g, " ").trim();
+  let name = line, addr = "", extra = "";
+  for (const m of line.matchAll(REGION_RE)) {
+    const at = m.index + m[0].indexOf(m[1]);
+    const am = line.slice(at).match(ADDR_RE);
+    if (am) {
+      name = line.slice(0, at).trim().replace(/[,·\-–:]+$/, "").trim();
+      addr = am[1].trim();
+      extra = line.slice(at + am[0].length).trim().replace(/^[,\s]+/, "");
+      break;
+    }
+  }
+  return { raw: raw.trim(), role, time, name, addr, extra, text: line };
+}
+
+function parseCourse(text) {
+  return text.split(/\r?\n/).map(parseLine).filter(Boolean);
+}
+
+function addrVariants(addr) {
+  const out = [addr];
+  for (const [a, b] of DISTRICT_ALT) if (addr.includes(a)) out.push(addr.replace(a, b));
+  return [...new Set(out)];
+}
+
+function shortRoad(addr) {
+  const m = addr.match(/([^\s]+(?:로|길)\s*\d+(?:-\d+)?)\s*$/);
+  return m ? m[1] : addr;
+}
+
+const normName = (s) => String(s || "").replace(/\s+/g, "").replace(/[()[\]·.,'"!?&-]/g, "").toLowerCase();
+
+function hav(a, b) {
+  const R = 6371008.8, r = Math.PI / 180;
+  const dLat = (b[0] - a[0]) * r, dLng = (b[1] - a[1]) * r;
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+
+// Douglas–Peucker (미터 단위). 회전 하나하나는 버리고 큰 길 흐름만 남김
+function simplify(pts, tol) {
+  if (pts.length < 3) return pts.slice();
+  const lat0 = pts[0][0] * Math.PI / 180, kx = 111320 * Math.cos(lat0), ky = 110540;
+  const P = pts.map((p) => [p[1] * kx, p[0] * ky]);
+  const keep = new Uint8Array(pts.length); keep[0] = keep[pts.length - 1] = 1;
+  const stack = [[0, pts.length - 1]];
+  while (stack.length) {
+    const [i, j] = stack.pop();
+    let best = -1, bi = -1;
+    const [ax, ay] = P[i], [bx, by] = P[j], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy;
+    for (let k = i + 1; k < j; k++) {
+      const [px, py] = P[k];
+      let t = L2 ? ((px - ax) * dx + (py - ay) * dy) / L2 : 0; t = Math.max(0, Math.min(1, t));
+      const d = Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+      if (d > best) { best = d; bi = k; }
+    }
+    if (best > tol) { keep[bi] = 1; stack.push([i, bi], [bi, j]); }
+  }
+  return pts.filter((_, k) => keep[k]);
+}
+
+function cumulative(path) {
+  const c = [0];
+  for (let i = 1; i < path.length; i++) c.push(c[i - 1] + hav(path[i - 1], path[i]));
+  return c;
+}
+
+// 경로의 앞에서 d미터까지 잘라낸 선 + 끝점
+function cutAt(path, cum, d) {
+  const total = cum[cum.length - 1];
+  if (d <= 0) return { pts: [path[0]], at: path[0] };
+  if (d >= total) return { pts: path, at: path[path.length - 1] };
+  let lo = 0, hi = cum.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (cum[m] <= d) lo = m; else hi = m; }
+  const seg = cum[hi] - cum[lo], t = seg ? (d - cum[lo]) / seg : 0;
+  const a = path[lo], b = path[hi];
+  const at = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+  return { pts: path.slice(0, lo + 1).concat([at]), at };
+}
+
+const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const START_PAUSE = 1.0, STOP_PAUSE = 1.5;
+const travelSec = (m) => Math.min(6.5, Math.max(1.8, 1.4 + (m / 1000) * 0.1));
+
+function buildTimeline(legs) {
+  let t = START_PAUSE;
+  const tl = legs.map((lg) => { const s = t, tr = travelSec(lg.meters); t += tr + STOP_PAUSE; return { s, tr, end: t }; });
+  return { tl, total: t };
+}
+// </pure>
+
+/* ── 지도 ─────────────────────────────────────────────── */
+const $ = (id) => document.getElementById(id);
+let map, geocoder, places, SPOTS = [];
+let course = null; // { stops:[...], legs:[...], tl, total }
+let T = 0, playing = false, speed = 1, lastTs = 0, curStop = -1, curLeg = -2;
+
+function loadScript(src) {
+  return new Promise((ok, fail) => { const el = document.createElement("script"); el.src = src; el.onload = ok; el.onerror = () => fail(new Error("load")); document.head.appendChild(el); });
+}
+
+async function initMap() {
+  try {
+    await loadScript(`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_KEY}&libraries=services&autoload=false`);
+    await new Promise((ok) => kakao.maps.load(ok));
+  } catch (e) {
+    $("map").innerHTML = `<div class="maperr">카카오 지도를 불러오지 못했어요.<br>이 주소(${esc(location.origin)})가 카카오 앱에 등록돼 있는지 확인해 주세요.</div>`;
+    return false;
+  }
+  map = new kakao.maps.Map($("map"), { center: new kakao.maps.LatLng(37.5, 126.75), level: 9 });
+  map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
+  geocoder = new kakao.maps.services.Geocoder();
+  places = new kakao.maps.services.Places();
+  addEventListener("resize", () => map.relayout());
+  return true;
+}
+
+const addrSearch = (q) => new Promise((ok) => geocoder.addressSearch(q, (r, st) => ok(st === kakao.maps.services.Status.OK ? r : [])));
+const kwSearch = (q, near) => new Promise((ok) => places.keywordSearch(q, (r, st) => ok(st === kakao.maps.services.Status.OK ? r : []),
+  near ? { location: new kakao.maps.LatLng(near[0], near[1]) } : {}));
+
+async function locate(it, near) {
+  if (it.addr) {
+    for (const q of addrVariants(it.addr)) {
+      const r = await addrSearch(q);
+      if (r.length) {
+        const a = r[0];
+        return { lat: +a.y, lng: +a.x, found: (a.road_address && a.road_address.address_name) || a.address_name, how: "addr" };
+      }
+    }
+  }
+  const qs = [it.name, it.text, it.extra].filter((q, i, arr) => q && arr.indexOf(q) === i);
+  for (const q of qs) {
+    const r = await kwSearch(q, near);
+    if (r.length) {
+      const p = r[0];
+      return { lat: +p.y, lng: +p.x, found: p.road_address_name || p.address_name, placeName: p.place_name, how: "kw" };
+    }
+  }
+  return null;
+}
+
+function matchSpot(st) {
+  if (!SPOTS.length) return null;
+  const keys = [st.name, st.placeName].map(normName).filter(Boolean);
+  for (const s of SPOTS) {
+    const n = normName(s.n), k = normName(s.kq);
+    if (keys.some((x) => x === n || x === k)) return s;
+  }
+  let best = null, bd = 120;
+  for (const s of SPOTS) {
+    const d = hav([st.lat, st.lng], [s.lat, s.lng]);
+    if (d < bd) {
+      const n = normName(s.n);
+      if (keys.some((x) => x.length >= 2 && (x.includes(n) || n.includes(x)))) { best = s; bd = d; }
+    }
+  }
+  return best;
+}
+
+async function route(pts) {
+  const coords = pts.map((p) => `${p[1].toFixed(6)},${p[0].toFixed(6)}`).join(";");
+  const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 15000);
+  try {
+    const r = await fetch(`${OSRM}${coords}?overview=full&geometries=geojson&alternatives=false&steps=false`, { signal: ctl.signal });
+    const j = await r.json();
+    if (j.code !== "Ok" || !j.routes || !j.routes[0]) throw new Error(j.code || "route");
+    const raw = j.routes[0].geometry.coordinates.map((c) => [c[1], c[0]]);
+    const path = simplify([pts[0], ...raw, pts[pts.length - 1]], 20);
+    return { path, meters: j.routes[0].distance, straight: false };
+  } catch (e) {
+    const path = pts.slice();
+    return { path, meters: cumulative(path).at(-1), straight: true };
+  } finally { clearTimeout(to); }
+}
+
+/* ── 그리기 ── */
+let overlays = [];
+function clearMap() {
+  overlays.forEach((o) => o.setMap(null)); overlays = [];
+  if (course) course.legs.forEach((lg) => lg.lines.forEach((l) => l.setMap(null)));
+  course = null; playing = false; T = 0; curStop = -1; curLeg = -2;
+  $("player").hidden = true; $("toast").hidden = true;
+}
+
+const LINE_STYLE = [
+  { strokeWeight: 16, strokeColor: "#c6ff00", strokeOpacity: 0.22 },
+  { strokeWeight: 8, strokeColor: "#1d2523", strokeOpacity: 0.6 },
+  { strokeWeight: 4, strokeColor: "#c6ff00", strokeOpacity: 1 },
+];
+
+function makeLines(straight) {
+  return LINE_STYLE.map((s, i) => new kakao.maps.Polyline({ ...s, strokeStyle: straight && i === 2 ? "shortdash" : "solid", zIndex: 10 + i }));
+}
+
+async function draw() {
+  if (!map) return;
+  const items = parseCourse($("src").value);
+  try { localStorage.setItem(STORE, $("src").value); } catch (e) {}
+  clearMap();
+  $("stops").innerHTML = "";
+  if (items.filter((x) => x.role === "stop").length < 2) { msg("출발지와 경유지를 두 곳 이상 적어 주세요."); return; }
+  $("go").disabled = true;
+  msg("위치를 찾는 중…", true);
+
+  // 1) 위치 찾기 (앞 지점 근처를 우선)
+  let near = null;
+  const located = [];
+  for (const it of items) {
+    const g = await locate(it, near);
+    located.push({ ...it, ...(g || {}), ok: !!g });
+    if (g) near = [g.lat, g.lng];
+  }
+  const stops = located.filter((x) => x.role === "stop" && x.ok);
+  const missing = located.filter((x) => !x.ok);
+  stops.forEach((s) => { s.spot = matchSpot(s); s.title = s.name || (s.spot && s.spot.n) || s.placeName || shortRoad(s.found || s.addr || s.text); });
+  if (stops.length < 2) { $("go").disabled = false; renderList(located, []); msg("위치를 찾은 곳이 두 곳이 안 돼서 그릴 수 없어요. 빨간 표시된 줄의 주소나 이름을 확인해 주세요."); return; }
+
+  // 2) 구간별 경로 (통과 지점은 앞뒤 구간 사이에 끼움)
+  msg("길을 잇는 중…", true);
+  const legs = [];
+  let from = null, vias = [];
+  for (const x of located) {
+    if (!x.ok) continue;
+    if (x.role === "via") { if (from) vias.push(x); continue; }
+    if (from) {
+      const pts = [[from.lat, from.lng], ...vias.map((v) => [v.lat, v.lng]), [x.lat, x.lng]];
+      const r = await route(pts);
+      legs.push({ ...r, cum: cumulative(r.path), from, to: x, vias, lines: makeLines(r.straight), shown: -1 });
+    }
+    from = x; vias = [];
+  }
+  const { tl, total } = buildTimeline(legs);
+  course = { stops, legs, tl, total };
+
+  // 3) 지도 표시
+  stops.forEach((s, i) => {
+    const el = document.createElement("div");
+    el.className = "cstop";
+    el.innerHTML = `${i === 0 ? "출" : i}<span class="lb">${s.time ? esc(s.time) + " · " : ""}${esc(s.title)}</span>`;
+    el.addEventListener("click", () => jumpTo(i));
+    const o = new kakao.maps.CustomOverlay({ position: new kakao.maps.LatLng(s.lat, s.lng), content: el, xAnchor: 0.5, yAnchor: 0.5, zIndex: 20, clickable: true });
+    o.setMap(map); overlays.push(o); s.el = el;
+  });
+  const dot = document.createElement("div"); dot.className = "cdot";
+  course.dot = new kakao.maps.CustomOverlay({ position: new kakao.maps.LatLng(stops[0].lat, stops[0].lng), content: dot, xAnchor: 0.5, yAnchor: 0.5, zIndex: 40 });
+  course.dot.setMap(map); overlays.push(course.dot);
+
+  renderList(located, legs);
+  const straight = legs.filter((l) => l.straight).length;
+  msg([missing.length ? `못 찾은 곳 ${missing.length}곳은 빼고 그렸어요.` : "", straight ? `길 정보를 못 받은 구간 ${straight}개는 점선 직선으로 표시했어요.` : ""].filter(Boolean).join(" "));
+  $("go").disabled = false;
+  $("player").hidden = false;
+  fitAll();
+  T = 0; render(); play(true);
+}
+
+function renderList(located, legs) {
+  const box = $("stops"); box.innerHTML = "";
+  let si = 0, li = 0;
+  located.forEach((x) => {
+    if (x.role === "via") {
+      if (!x.ok) box.insertAdjacentHTML("beforeend", `<div class="leg"><span class="w">통과 지점 “${esc(x.text)}”을 못 찾아 빼고 이었어요</span></div>`);
+      return;
+    }
+    if (!x.ok) {
+      box.insertAdjacentHTML("beforeend", `<div class="stop miss"><span class="num">?</span><span><span class="name">${esc(x.name || x.text)}</span><div class="err">위치를 못 찾았어요 — 주소를 한 줄로 적어 주세요</div></span></div>`);
+      return;
+    }
+    if (si > 0 && legs[li]) {
+      const lg = legs[li++];
+      const via = lg.vias.length ? ` · ${lg.vias.map((v) => esc(v.placeName || v.text)).join(", ")} 통과` : "";
+      box.insertAdjacentHTML("beforeend", `<div class="leg">약 ${(lg.meters / 1000).toFixed(lg.meters < 10000 ? 1 : 0)}km${via}${lg.straight ? ' <span class="w">(직선)</span>' : ""}</div>`);
+    }
+    const i = si++;
+    const sp = x.spot;
+    let spot = "";
+    if (sp) {
+      const post = (sp.p && sp.p[0]) || (sp.r && sp.r[0]);
+      const tip = post ? post[3] : "";
+      spot = `<div class="spot"><b>스팟 지도에 있는 곳</b>${tip ? " · " + esc(tip) : ""}${post ? ` <a href="${fm(post[0])}" target="_blank" rel="noopener">원글 ↗</a>` : ""}</div>`;
+    }
+    box.insertAdjacentHTML("beforeend", `<button class="stop" type="button" data-i="${i}"><span class="num">${i === 0 ? "출" : i}</span><span>
+      <span class="name">${x.time ? `<span class="time">${esc(x.time)}</span>` : ""}${esc(x.title)}</span>
+      <div class="sub">${esc(x.found || x.addr || "")}</div>${spot}</span></button>`);
+  });
+  box.querySelectorAll(".stop[data-i]").forEach((b) => b.addEventListener("click", () => jumpTo(+b.dataset.i)));
+}
+
+function msg(t, info) { const m = $("msg"); m.textContent = t || ""; m.className = "msg" + (info ? " info" : ""); }
+
+function boundsOf(pts) { const b = new kakao.maps.LatLngBounds(); pts.forEach((p) => b.extend(new kakao.maps.LatLng(p[0], p[1]))); return b; }
+function fitAll() {
+  const pts = course.legs.flatMap((l) => l.path);
+  map.setBounds(boundsOf(pts), 70, 50, 110, 50);
+}
+
+/* ── 재생 ── */
+function render() {
+  if (!course) return;
+  const { legs, tl, stops, total } = course;
+  T = Math.max(0, Math.min(total, T));
+  let dotAt = [stops[0].lat, stops[0].lng], stopNow = 0, legNow = -1;
+  legs.forEach((lg, i) => {
+    const { s, tr } = tl[i];
+    const f = ease(Math.max(0, Math.min(1, (T - s) / tr)));
+    const d = f * lg.cum[lg.cum.length - 1];
+    const key = f <= 0 ? 0 : f >= 1 ? 2 : 1;
+    if (key === 0) { if (lg.shown !== 0) { lg.lines.forEach((l) => l.setMap(null)); lg.shown = 0; } }
+    else {
+      const { pts, at } = cutAt(lg.path, lg.cum, d);
+      if (key === 1 || lg.shown !== 2) {
+        const path = pts.map((p) => new kakao.maps.LatLng(p[0], p[1]));
+        lg.lines.forEach((l) => { l.setPath(path); l.setMap(map); });
+        lg.shown = key;
+      }
+      if (T >= s) { dotAt = at; legNow = i; stopNow = f >= 1 ? i + 1 : -1; }
+    }
+    // 지난 구간은 조금 옅게
+    const past = T > tl[i].end;
+    if (lg.past !== past) { lg.lines[2].setOptions({ strokeOpacity: past ? 0.55 : 1 }); lg.lines[0].setOptions({ strokeOpacity: past ? 0.1 : 0.22 }); lg.past = past; }
+  });
+  course.dot.setPosition(new kakao.maps.LatLng(dotAt[0], dotAt[1]));
+
+  stops.forEach((st, i) => {
+    const reached = i === 0 || T >= tl[i - 1].s + tl[i - 1].tr;
+    st.el.classList.toggle("on", reached);
+    st.el.classList.toggle("cur", i === stopNow);
+  });
+  if (stopNow !== curStop) {
+    curStop = stopNow;
+    document.querySelectorAll(".stop[data-i]").forEach((b) => b.classList.toggle("cur", +b.dataset.i === stopNow));
+    if (stopNow >= 0) showToast(stops[stopNow], stopNow); else $("toast").hidden = true;
+  }
+  if ($("follow").checked && legNow !== curLeg) {
+    curLeg = legNow;
+    if (legNow >= 0) map.setBounds(boundsOf(legs[legNow].path), 80, 60, 120, 60);
+  }
+  $("scrub").value = Math.round((T / total) * 1000);
+  $("play").textContent = playing ? "❚❚" : "▶";
+  $("play").setAttribute("aria-label", playing ? "일시정지" : "재생");
+}
+
+function showToast(st, i) {
+  const sp = st.spot, post = sp && ((sp.p && sp.p[0]) || (sp.r && sp.r[0]));
+  $("toast").innerHTML = `<div class="t1">${i === 0 ? "출발" : i + "."} ${st.time ? esc(st.time) + " · " : ""}${esc(st.title)}</div>` +
+    (post && post[3] ? `<div class="t2">${esc(post[3])}</div>` : "");
+  $("toast").hidden = false;
+}
+
+function tick(ts) {
+  if (!playing) return;
+  const dt = lastTs ? (ts - lastTs) / 1000 : 0; lastTs = ts;
+  T += dt * speed;
+  if (T >= course.total) { T = course.total; playing = false; }
+  render();
+  if (playing) requestAnimationFrame(tick);
+}
+function play(on) {
+  if (!course) return;
+  if (on && T >= course.total) { T = 0; curLeg = -2; if ($("follow").checked) fitAll(); }
+  playing = on; lastTs = 0; render();
+  if (on) requestAnimationFrame(tick);
+}
+function jumpTo(i) {
+  if (!course) return;
+  playing = false;
+  T = i === 0 ? 0 : course.tl[i - 1].s + course.tl[i - 1].tr + 0.01;
+  curLeg = -2; render();
+  const st = course.stops[i];
+  if (map.getLevel() > 6) map.setLevel(6);
+  map.panTo(new kakao.maps.LatLng(st.lat, st.lng));
+}
+
+/* ── 시작 ── */
+$("go").addEventListener("click", draw);
+$("clear").addEventListener("click", () => { $("src").value = ""; try { localStorage.removeItem(STORE); } catch (e) {} clearMap(); $("stops").innerHTML = ""; msg(""); });
+$("play").addEventListener("click", () => play(!playing));
+$("restart").addEventListener("click", () => { T = 0; curLeg = -2; if ($("follow").checked) fitAll(); play(true); });
+$("scrub").addEventListener("input", (e) => { if (!course) return; playing = false; T = (+e.target.value / 1000) * course.total; render(); });
+document.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => {
+  speed = +b.dataset.sp;
+  document.querySelectorAll(".seg button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+}));
+$("follow").addEventListener("change", (e) => { curLeg = -2; if (!e.target.checked && course) fitAll(); render(); });
+$("src").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) draw(); });
+
+(async () => {
+  try { const v = localStorage.getItem(STORE); if (v) $("src").value = v; } catch (e) {}
+  fetch("spots.json", { cache: "no-cache" }).then((r) => r.json()).then((j) => { SPOTS = j; }).catch(() => {});
+  await initMap();
+})();
+</script>
+</body>
+</html>
